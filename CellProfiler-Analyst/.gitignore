@@ -1,0 +1,14 @@
+*.jar
+*~
+*.pyc
+*.pyd
+*.so
+*.dll
+*.exe
+*\#
+/build
+/dist
+output
+/cpa/_description.py
+/cpa/version.iss
+.idea

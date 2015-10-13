@@ -1,0 +1,5 @@
+"","Prediction","Reference","variable","value"
+"1","prophase","prophase","Freq",102
+"2","round","prophase","Freq",5
+"3","prophase","round","Freq",11
+"4","round","round","Freq",73
