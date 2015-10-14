@@ -10,6 +10,7 @@ import numpy
 import threading
 import wx
 import os
+import javabridge
 
 db = DBConnect.getInstance()
 p = Properties.getInstance()

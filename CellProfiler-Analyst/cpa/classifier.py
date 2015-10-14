@@ -232,7 +232,7 @@ class Classifier(wx.Frame):
         self.fetchSizer.Hide(self.fetchFromGroupSizer)
 
         # JK - Start Add
-        # Define the classification algorithms and set the default to AdaBoost
+        # Define the classification algorithms and set the default
         self.algorithm = GeneralClassifier()
         self.complexityTxt.SetLabel(str(self.algorithm.get_params()))
         self.algorithms = {
@@ -316,6 +316,7 @@ class Classifier(wx.Frame):
         self.rules_text.Value = ''
 
         # Make sure the classifier is cleared before running a new training session
+        self.algorithm.ClearModel()
 
         # Update the classBins in the model
         self.algorithm.UpdateBins(self.classBins)

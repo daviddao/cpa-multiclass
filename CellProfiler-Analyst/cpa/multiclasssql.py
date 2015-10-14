@@ -1,7 +1,7 @@
 import numpy as np
 import sys
 import cpa.sqltools
-from dbconnect import DBConnect, UniqueObjectClause, UniqueImageClause, image_key_columns, GetWhereClauseForImages, GetWhereClauseForObjects
+from dbconnect import DBConnect, UniqueObjectClause, UniqueImageClause, image_key_columns, GetWhereClauseForImages, GetWhereClauseForObjects, object_key_defs
 from properties import Properties
 from datamodel import DataModel
 from sklearn.ensemble import AdaBoostClassifier
@@ -15,10 +15,64 @@ temp_score_table = "_scores"
 temp_class_table = "_class"
 filter_table_prefix = '_filter_'
 
+def create_perobject_class_table(classifier, classNames):
+    '''
+    classifier: generalclassifier object
+    classNames: list/array of class names
+    RETURNS: Saves table with columns Table Number, Image Number, Object Number, class number, class name to a pre defined
+    table in the database (the class number is the predicted class)
+    '''
+    nClasses = len(classNames)
+
+    if p.class_table is None:
+        raise ValueError('"class_table" in properties file is not set.')
+
+    index_cols = UniqueObjectClause()
+    class_cols = UniqueObjectClause() + ', class_number, class'
+    class_col_defs = object_key_defs() + ', class VARCHAR (%d)'%(3) + ', class_number INT'
+
+
+    # Drop must be explicitly asked for Classifier.ScoreAll
+    print('Drop table...')
+    db.execute('DROP TABLE IF EXISTS %s'%(p.class_table))
+    print('Create table...')
+    db.execute('CREATE TABLE %s (%s)'%(p.class_table, class_col_defs))
+    print('Create index...')
+    db.execute('CREATE INDEX idx_%s ON %s (%s)'%(p.class_table, p.class_table, index_cols))
+
+    print('Getting data...')
+    number_of_features = len(db.GetColnamesForClassifier())
+    wheres = _where_clauses(p, dm, None)
+    data = []
+    for idx, where_clause in enumerate(wheres):
+        data = db.execute('SELECT %s, %s FROM %s '
+                          '%s WHERE %s'
+                          %(UniqueObjectClause(p.object_table),
+                            ",".join(db.GetColnamesForClassifier()), p.object_table,'', where_clause),
+                          silent=(idx > 10))
+        #data.extend(result)
+    #print('Getting predictions...')
+        cell_data = np.array([row[-number_of_features:] for row in data]) #last number_of_features columns in row
+        object_keys = np.array([row[:-number_of_features] for row in data]) #all elements in row before last (number_of_features) elements
+        predicted_classes = classifier.Predict(cell_data)
+
+    #print('Writing to database...')
+        expr = 'CASE '+ ''.join(["WHEN TableNumber=%d AND ImageNumber=%d AND ObjectNumber=%d THEN '%s'"%(
+            object_keys[ii][0], object_keys[ii][1], object_keys[ii][2], predicted_classes[ii] )
+            for ii in range(0, len(predicted_classes))])+ " END"
+        expr2 = 'CASE '+ ''.join(["WHEN TableNumber=%d AND ImageNumber=%d AND ObjectNumber=%d THEN '%s'"%(
+            object_keys[ii][0], object_keys[ii][1], object_keys[ii][2],
+            classNames[predicted_classes[ii] - 1]) for ii in range(0, len(predicted_classes))])+ " END"
+        db.execute('INSERT INTO %s (%s) SELECT %s, %s, %s FROM %s'%(p.class_table, class_cols, index_cols, expr, expr2, p.object_table))
+        print(idx)
+    db.Commit()
+
+
+
 def FilterObjectsFromClassN(classNum, classifier, filterKeys):
     '''
     classNum: 1-based index of the class to retrieve obKeys from
-    classifier: trained model of classifier
+    classifier: trained classifier object
     filterKeys: (optional) A list of specific imKeys OR obKeys (NOT BOTH)
         to classify.
         * WARNING: If this list is too long, you may exceed the size limit to
@@ -27,7 +81,7 @@ def FilterObjectsFromClassN(classNum, classifier, filterKeys):
           DataModel to get batches of random objects, and sift through them
           here until N objects of the desired class have been accumulated.
         * Also useful for classifying a specific image or group of images.
-    RETURNS: A list of object keys that fall in the specified class,
+    RETURNS: A list of object keys that fall in the specified class (but not all objects?),
         if Properties.area_scoring_column is specified, area sums are also
         reported for each class
     '''
@@ -99,7 +153,7 @@ def _where_clauses(p, dm, filter_name):
 
 def PerImageCounts(classifier, num_classes, filter_name=None, cb=None):
     '''
-    classifier: trained model of classifier
+    classifier: trained classifier object
     filter: name of filter, or None.
     cb: callback function to update with the fraction complete
     RETURNS: A list of lists of imKeys and respective object counts for each class:
@@ -215,13 +269,16 @@ if __name__ == "__main__":
     p.LoadFile(props)
     trainingSet = TrainingSet(p)
     trainingSet.Load(ts)
+    print trainingSet.label_matrix.shape
     print trainingSet.labels
     print len(trainingSet.colnames)
     print trainingSet.values.shape
     output = StringIO()
     print 'Training classifier with '+str(nRules)+' rules...'
 
-    GC.Train(trainingSet.labels,trainingSet.values, output)
+    labels = np.nonzero(trainingSet.label_matrix+1)[1] + 1 #base 1 classes
+    print len(labels)
+    GC.Train(labels,trainingSet.values)
     num_classes = trainingSet.label_matrix.shape[1]
 
     '''
@@ -231,9 +288,10 @@ if __name__ == "__main__":
     for row in table:
         print row'''
 
-    obkey_list = FilterObjectsFromClassN(2, GC.classifier, filterKeys=None)
-    for row in obkey_list:
-        print row
+    #obkey_list = FilterObjectsFromClassN(2, GC, filterKeys=None)
+    #for row in obkey_list:
+    #    print row
     #object_scores()
-    #create_perobject_class_table()
+    p.class_table = 'testmulticlassql'
+    create_perobject_class_table(GC, range(num_classes))
     #_objectify()
