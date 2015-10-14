@@ -11,6 +11,7 @@ from sklearn import ensemble, naive_bayes, grid_search, svm, lda, qda, tree, mul
 from sklearn import cross_validation
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn import metrics
+import cPickle, json
 
 class GeneralClassifier(BaseEstimator, ClassifierMixin):
     def __init__(self, classifier = lda.LDA()):
@@ -57,11 +58,26 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
         self.classBins = []
         self.trained = False
 
+    def CreatePerObjectClassTable(self, classNames):
+        multiclasssql.create_perobject_class_table(self, classNames)
+
     def FilterObjectsFromClassN(self, obClass, obKeysToTry):
-        return multiclasssql.FilterObjectsFromClassN(obClass, self.classifier, obKeysToTry)
+        return multiclasssql.FilterObjectsFromClassN(obClass, self, obKeysToTry)
 
     def IsTrained(self):
         return self.trained
+
+    def LoadModel(self, model_filename):
+
+        try:
+            with open(model_filename, 'r') as infile:
+                self.model, self.bin_labels = cPickle.load(infile)
+        except:
+            self.model = None
+            self.bin_labels = None
+            logging.error('The loaded model was not a fast gentle boosting model')
+            raise TypeError
+
 
     def LOOCV(self, labels, values, details=False):
         '''
@@ -86,7 +102,7 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
         return scores
 
     def PerImageCounts(self, filter_name=None, cb=None):
-        return multiclasssql.PerImageCounts(self.classifier, filter_name=filter_name, cb=cb)
+        return multiclasssql.PerImageCounts(self, filter_name=filter_name, cb=cb)
 
     def Predict(self, test_values, fout=None):
         '''RETURNS: np array of predicted classes of input data test_values '''
@@ -94,6 +110,10 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
         if fout:
             print predictions
         return np.array(predictions)
+
+    def SaveModel(self, model_filename, bin_labels):
+        with open(model_filename, 'w') as outfile:
+            cPickle.dump((self.model, bin_labels), outfile)
 
     def ShowModel(self):#SKLEARN TODO
         '''
