@@ -63,7 +63,8 @@ def create_perobject_class_table(classifier, classNames):
         expr2 = 'CASE '+ ''.join(["WHEN TableNumber=%d AND ImageNumber=%d AND ObjectNumber=%d THEN '%s'"%(
             object_keys[ii][0], object_keys[ii][1], object_keys[ii][2],
             classNames[predicted_classes[ii] - 1]) for ii in range(0, len(predicted_classes))])+ " END"
-        db.execute('INSERT INTO %s (%s) SELECT %s, %s, %s FROM %s'%(p.class_table, class_cols, index_cols, expr, expr2, p.object_table))
+        db.execute('INSERT INTO %s (%s) SELECT %s, %s, %s FROM %s'%(p.class_table, class_cols, index_cols, expr, expr2, p.object_table),
+            silent=True)
         print(idx)
     db.Commit()
 
