@@ -20,6 +20,7 @@ import dirichletintegrate
 import imagetools
 import polyafit
 import sortbin
+import logging
 import numpy as np
 import os
 import wx
