@@ -10,6 +10,7 @@ from time import time
 class FastGentleBoosting(object):
     def __init__(self, classifier = None):
         logging.info('Initialized New Fast Gentle Boosting Classifier')
+        self.name = "FastGentleBoosting"
         self.model = None
         self.classBins = []
         self.classifier = classifier

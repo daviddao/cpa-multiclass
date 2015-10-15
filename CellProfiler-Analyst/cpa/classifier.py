@@ -29,6 +29,9 @@ import re
 import cpa.helpmenu
 from dimensredux import PlotMain
 
+import fastgentleboostingmulticlass
+from fastgentleboosting import FastGentleBoosting
+
 if scikits_loaded:
     #from supportvectormachines import SupportVectorMachines
     from generalclassifier import GeneralClassifier
@@ -183,7 +186,7 @@ class Classifier(wx.Frame):
         self.find_rules_sizer.Add(self.nRulesTxt)
         self.find_rules_sizer.Add((5, 20))
         self.find_rules_sizer.Add(self.trainClassifierBtn)
-        self.checkProgressBtn = wx.Button(self.find_rules_panel, -1, 'Check Progress')
+        self.checkProgressBtn = wx.Button(self.find_rules_panel, -1, 'Cross Validation')
         self.checkProgressBtn.Disable()
         self.find_rules_sizer.Add((5, 20))
         self.find_rules_sizer.Add(self.checkProgressBtn)
@@ -236,8 +239,8 @@ class Classifier(wx.Frame):
 
         # JK - Start Add
         # Define the classification algorithms and set the default
-        self.algorithm = GeneralClassifier()
-        self.complexityTxt.SetLabel(str(self.algorithm.get_params()))
+        self.algorithm = FastGentleBoosting(self)
+        self.complexityTxt.SetLabel(str(self.algorithm.ComplexityTxt()))
 
         if scikits_loaded:
             # Define Classifiers
@@ -247,6 +250,8 @@ class Classifier(wx.Frame):
             # End definition
 
         self.algorithms = {
+            # Legacy code
+            'fastgentleboosting': FastGentleBoosting(self),
             # TODO adapt if scikit loaded inside object
             'adaboost': AdaBoostClassifier,
             'supportvectormachines': SupportVectorMachines
@@ -316,7 +321,8 @@ class Classifier(wx.Frame):
     def AlgorithmSelect(self, event):
         selectedItem = re.sub('[\W_]+', '', self.classifierMenu.FindItemById(event.GetId()).GetText())
         try:
-            self.algorithm = self.algorithms[selectedItem.lower()](self)
+            self.algorithm = self.algorithms[selectedItem.lower()]
+            logging.info("Algorithm " + selectedItem + " succesfully loaded")
         except:
             # Fall back to default algorithm
             logging.error('Could not load specified algorithm, falling back to default.')
@@ -442,7 +448,9 @@ class Classifier(wx.Frame):
         self.Bind(wx.EVT_MENU, self.OnRulesEdit, rulesEditMenuItem)
 
         self.Bind(wx.EVT_MENU, self.AlgorithmSelect, fgbMenuItem) # JK - Added
+        # Bind events for algorithms
         if scikits_loaded:
+            self.Bind(wx.EVT_MENU, self.AlgorithmSelect, adaMenuItem) # JK - Added
             self.Bind(wx.EVT_MENU, self.AlgorithmSelect, svmMenuItem) # JK - Added
 
     def CreateChannelMenus(self):
@@ -1057,23 +1065,28 @@ class Classifier(wx.Frame):
                 output = StringIO()
                 dlg = wx.ProgressDialog('Training classifier...', '0% Complete', 100, self,
                                         wx.PD_ELAPSED_TIME | wx.PD_ESTIMATED_TIME | wx.PD_REMAINING_TIME | wx.PD_CAN_ABORT)
+                
                 # JK - Start Modification
                 # Train the desired algorithm
-                # self.algorithm.Train(self.trainingSet.label_matrix,
-                #     self.trainingSet.values, output
-                # )
-                
-                ## Parsing original label_matrix into numpy format 
-                ## Original [-1 1] -> [0 1] (take only second?)
-                sk_label_matrix = np.nonzero(self.trainingSet.label_matrix + 1)[1] + 1
+                # Legacy Code
+                if self.algorithm.name == "FastGentleBoosting":
+                    self.algorithm.Train(
+                        self.trainingSet.colnames, nRules, self.trainingSet.label_matrix,
+                        self.trainingSet.values, output, callback=cb
+                    )
+                else:
+                    ## Parsing original label_matrix into numpy format 
+                    ## Original [-1 1] -> [0 1] (take only second?)
+                    sk_label_matrix = np.nonzero(self.trainingSet.label_matrix + 1)[1] + 1
 
-                self.algorithm.Train(sk_label_matrix, self.trainingSet.values, output)
+                    self.algorithm.Train(sk_label_matrix, self.trainingSet.values, output)
                 # JK - End Modification
 
                 self.PostMessage('Classifier trained in %.1fs.' % (time() - t1))
                 dlg.Destroy()
                 # Hack
-                # self.rules_text.Value = self.algorithm.ShowModel()
+                if (self.algorithm.name == "FastGentleBoosting"):
+                    self.rules_text.Value = self.algorithm.ShowModel()
                 self.scoreAllBtn.Enable()
                 self.scoreImageBtn.Enable()
             except StopCalculating:

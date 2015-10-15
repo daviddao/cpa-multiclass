@@ -13,11 +13,18 @@ from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn import metrics
 import cPickle, json
 
+'''
+TODO missing functions for class algorithm
+Show model
+GetComplxTxt <- Get params
+'''
+
 class GeneralClassifier(BaseEstimator, ClassifierMixin):
-    def __init__(self, classifier = lda.LDA()):
-        logging.info('Initialized New Classifier')
+    def __init__(self, classifier = "lda.LDA()"):
+        logging.info('Initialized New Classifier: ' + classifier)
+        self.name = "Not Gentle Boosting!"
         self.classBins = []
-        self.classifier = classifier
+        self.classifier = eval(classifier)
         self.trained = False
 
     def CheckProgress(self):
@@ -57,6 +64,10 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
     def ClearModel(self):
         self.classBins = []
         self.trained = False
+
+    # Adapter to SciKit Learn
+    def ComplexityTxt():
+        return str(self.get_params())
 
     def CreatePerObjectClassTable(self, classNames):
         multiclasssql.create_perobject_class_table(self, classNames)
