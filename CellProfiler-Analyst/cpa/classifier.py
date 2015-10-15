@@ -4,9 +4,7 @@ from __future__ import with_statement
 # Enable SciKit Learn
 scikits_loaded = True
 
-# This must come first for py2app/py2exe
 import matplotlib
-
 matplotlib.use('WXAgg')
 import tableviewer
 from datamodel import DataModel
@@ -32,9 +30,8 @@ import cpa.helpmenu
 from dimensredux import PlotMain
 
 if scikits_loaded:
-    from supportvectormachines import SupportVectorMachines
+    #from supportvectormachines import SupportVectorMachines
     from generalclassifier import GeneralClassifier
-    from sklearn.ensemble import AdaBoostClassifier
 
 # number of cells to classify before prompting the user for whether to continue
 MAX_ATTEMPTS = 10000
@@ -241,7 +238,16 @@ class Classifier(wx.Frame):
         # Define the classification algorithms and set the default
         self.algorithm = GeneralClassifier()
         self.complexityTxt.SetLabel(str(self.algorithm.get_params()))
+
+        if scikits_loaded:
+            # Define Classifiers
+            AdaBoostClassifier = GeneralClassifier("ensemble.AdaBoostClassifier()")
+            SupportVectorMachines = GeneralClassifier("svm.LinearSVC()")
+
+            # End definition
+
         self.algorithms = {
+            # TODO adapt if scikit loaded inside object
             'adaboost': AdaBoostClassifier,
             'supportvectormachines': SupportVectorMachines
         }
@@ -317,7 +323,7 @@ class Classifier(wx.Frame):
             self.algorithm = GeneralClassifier()
 
         # Update the GUI complexity text and classifier description
-        self.complexityTxt.SetLabel(self.algorithm.get_params())
+        # self.complexityTxt.SetLabel(self.algorithm.get_params())
         self.complexityTxt.Parent.Layout()
         self.rules_text.Value = ''
 
@@ -422,6 +428,7 @@ class Classifier(wx.Frame):
         self.classifierMenu = wx.Menu();
         fgbMenuItem = self.classifierMenu.AppendRadioItem(-1, text='Fast Gentle Boosting', help='Uses the Fast Gentle Boosting algorithm to find classifier rules.')
         if scikits_loaded:
+            adaMenuItem = self.classifierMenu.AppendRadioItem(-1, text='Ada Boost', help='Uses Ada Boost to find classifier rules.')
             svmMenuItem = self.classifierMenu.AppendRadioItem(-1, text='Support Vector Machines', help='User Support Vector Machines to find classifier rules.')
         self.GetMenuBar().Append(self.classifierMenu, 'Classifier')
         # JK - End Add
@@ -1052,14 +1059,21 @@ class Classifier(wx.Frame):
                                         wx.PD_ELAPSED_TIME | wx.PD_ESTIMATED_TIME | wx.PD_REMAINING_TIME | wx.PD_CAN_ABORT)
                 # JK - Start Modification
                 # Train the desired algorithm
-                self.algorithm.Train(self.trainingSet.label_matrix,
-                    self.trainingSet.values, output
-                )
+                # self.algorithm.Train(self.trainingSet.label_matrix,
+                #     self.trainingSet.values, output
+                # )
+                
+                ## Parsing original label_matrix into numpy format 
+                ## Original [-1 1] -> [0 1] (take only second?)
+                sk_label_matrix = np.nonzero(self.trainingSet.label_matrix + 1)[1] + 1
+
+                self.algorithm.Train(sk_label_matrix, self.trainingSet.values, output)
                 # JK - End Modification
 
                 self.PostMessage('Classifier trained in %.1fs.' % (time() - t1))
                 dlg.Destroy()
-                self.rules_text.Value = self.algorithm.ShowModel()
+                # Hack
+                # self.rules_text.Value = self.algorithm.ShowModel()
                 self.scoreAllBtn.Enable()
                 self.scoreImageBtn.Enable()
             except StopCalculating:
