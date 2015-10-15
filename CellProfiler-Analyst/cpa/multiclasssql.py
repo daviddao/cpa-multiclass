@@ -1,5 +1,10 @@
+
 import numpy as np
 import sys
+
+sys.path.insert(1, '/home/vagrant/cpa-multiclass/CellProfiler-Analyst/cpa');
+sys.path.insert(1, '/home/vagrant/cpa-multiclass/CellProfiler-Analyst/')
+
 import cpa.sqltools
 from dbconnect import DBConnect, UniqueObjectClause, UniqueImageClause, image_key_columns, GetWhereClauseForImages, GetWhereClauseForObjects, object_key_defs
 from properties import Properties
@@ -259,8 +264,8 @@ if __name__ == "__main__":
     db = DBConnect.getInstance()
     dm = DataModel.getInstance()
 
-    props = '/Users/jyhung/work/projects/subpop/analysis/input/2013-01-16_Handtraining_using_only_the_DNA_stain/training_sets/2013_01_17_Anne_AZ_DNA_training/az-dnaonly.properties'
-    ts = '/Users/jyhung/work/projects/subpop/analysis/input/2013-01-16_Handtraining_using_only_the_DNA_stain/training_sets/2013_01_17_Anne_AZ_DNA_training/Anne_DNA_66.txt'
+    props = '/vagrant/az-dnaonly.properties'
+    ts = '/vagrant/Anne_DNA_66.txt'
     nRules = 5
     filter = None
 

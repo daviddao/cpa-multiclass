@@ -1,6 +1,9 @@
 # Encoding: utf-8
 from __future__ import with_statement
 
+# Enable SciKit Learn
+scikits_loaded = True
+
 # This must come first for py2app/py2exe
 import matplotlib
 
@@ -26,10 +29,12 @@ import os
 import wx
 import re
 import cpa.helpmenu
-from supportvectormachines import SupportVectorMachines
-from generalclassifier import GeneralClassifier
 from dimensredux import PlotMain
-from sklearn.ensemble import AdaBoostClassifier
+
+if scikits_loaded:
+    from supportvectormachines import SupportVectorMachines
+    from generalclassifier import GeneralClassifier
+    from sklearn.ensemble import AdaBoostClassifier
 
 # number of cells to classify before prompting the user for whether to continue
 MAX_ATTEMPTS = 10000
@@ -391,9 +396,9 @@ class Classifier(wx.Frame):
                                                    help='Save your training set to file so you can reload these classified cells again.')
         self.fileMenu.AppendSeparator()
         # JEN - Start Add
-        ##        self.loadModelMenuItem = self.fileMenu.Append(-1, text='Load classifier model\tCtrl+Shift+O', help='Loads a classifier model specified in a text file')
-        ##        self.saveModelMenuItem = self.fileMenu.Append(-1, text='Save classifier model\tCtrl+Shift+S', help='Save your classifier model to file so you can use it again on this or other experiments.')
-        ##        self.fileMenu.AppendSeparator()
+        self.loadModelMenuItem = self.fileMenu.Append(-1, text='Load classifier model\tCtrl+Shift+O', help='Loads a classifier model specified in a text file')
+        self.saveModelMenuItem = self.fileMenu.Append(-1, text='Save classifier model\tCtrl+Shift+S', help='Save your classifier model to file so you can use it again on this or other experiments.')
+        self.fileMenu.AppendSeparator()
         # JEN - End Add
         self.exitMenuItem = self.fileMenu.Append(id=wx.ID_EXIT, text='Exit\tCtrl+Q', help='Exit classifier')
         self.GetMenuBar().Append(self.fileMenu, 'File')
@@ -414,11 +419,11 @@ class Classifier(wx.Frame):
 
         # JK - Start Add
         # Classifier Type chooser
-        ##        self.classifierMenu = wx.Menu();
-        ##        fgbMenuItem = self.classifierMenu.AppendRadioItem(-1, text='Fast Gentle Boosting', help='Uses the Fast Gentle Boosting algorithm to find classifier rules.')
-        ##        if scikits_loaded:
-        ##            svmMenuItem = self.classifierMenu.AppendRadioItem(-1, text='Support Vector Machines', help='User Support Vector Machines to find classifier rules.')
-        ##        self.GetMenuBar().Append(self.classifierMenu, 'Classifier')
+        self.classifierMenu = wx.Menu();
+        fgbMenuItem = self.classifierMenu.AppendRadioItem(-1, text='Fast Gentle Boosting', help='Uses the Fast Gentle Boosting algorithm to find classifier rules.')
+        if scikits_loaded:
+            svmMenuItem = self.classifierMenu.AppendRadioItem(-1, text='Support Vector Machines', help='User Support Vector Machines to find classifier rules.')
+        self.GetMenuBar().Append(self.classifierMenu, 'Classifier')
         # JK - End Add
 
         # Bind events to different menu items
@@ -429,9 +434,9 @@ class Classifier(wx.Frame):
         self.Bind(wx.EVT_MENU, self.OnShowImageControls, imageControlsMenuItem)
         self.Bind(wx.EVT_MENU, self.OnRulesEdit, rulesEditMenuItem)
 
-    ##        self.Bind(wx.EVT_MENU, self.AlgorithmSelect, fgbMenuItem) # JK - Added
-    ##        if scikits_loaded:
-    ##            self.Bind(wx.EVT_MENU, self.AlgorithmSelect, svmMenuItem) # JK - Added
+        self.Bind(wx.EVT_MENU, self.AlgorithmSelect, fgbMenuItem) # JK - Added
+        if scikits_loaded:
+            self.Bind(wx.EVT_MENU, self.AlgorithmSelect, svmMenuItem) # JK - Added
 
     def CreateChannelMenus(self):
         ''' Create color-selection menus for each channel. '''
