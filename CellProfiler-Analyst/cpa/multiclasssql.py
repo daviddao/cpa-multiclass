@@ -93,16 +93,17 @@ def FilterObjectsFromClassN(classNum, classifier, filterKeys):
     '''
 
     if filterKeys != [] and filterKeys is not None:
+
         if isinstance(filterKeys, str):
-            whereclause = filterKeys + " AND"
+            whereclause = filterKeys #+ " AND"
         else:
             isImKey = len(filterKeys[0]) == len(image_key_columns())
             if isImKey:
-                whereclause = GetWhereClauseForImages(filterKeys) + " AND"
+                whereclause = GetWhereClauseForImages(filterKeys) #+ " AND"
             else:
-                whereclause = GetWhereClauseForObjects(filterKeys) + " AND"
+                whereclause = GetWhereClauseForObjects(filterKeys) #+ " AND"
     else:
-        whereclause = "1=1"
+        whereclause = ""
 
     if p.area_scoring_column:
         data = db.execute('SELECT %s, %s FROM %s WHERE %s'%(UniqueObjectClause(p.object_table),
@@ -120,7 +121,9 @@ def FilterObjectsFromClassN(classNum, classifier, filterKeys):
     object_keys = np.array([row[:-number_of_features] for row in data]) #all elements in row before last (number_of_features) elements
 
     predicted_classes = classifier.Predict(cell_data)
-    return object_keys[predicted_classes == classNum * np.ones(predicted_classes.shape)]
+    res = object_keys[predicted_classes == classNum * np.ones(predicted_classes.shape)].tolist() #convert to list 
+
+    return map(tuple,res) # ... and then to tuples
 
 def _objectify(p, field):
     return "%s.%s"%(p.object_table, field)

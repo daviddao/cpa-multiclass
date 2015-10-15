@@ -822,6 +822,8 @@ class Classifier(wx.Frame):
 
                 self.PostMessage('Classifying %s.' % (p.object_name[1]))
                 obKeys += self.algorithm.FilterObjectsFromClassN(obClass, obKeysToTry)
+
+
                 attempts += len(obKeysToTry)
                 total_attempts += len(obKeysToTry)
                 if attempts >= MAX_ATTEMPTS:
