@@ -6,7 +6,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sys import stdin, stdout, argv, exit
 from time import time
-from sklearn.ensemble import AdaBoostClassifier
 
 class FastGentleBoosting(object):
     def __init__(self, classifier = None):
@@ -28,12 +27,12 @@ class FastGentleBoosting(object):
         if not self.classifier.UpdateTrainingSet():
             self.PostMessage('Cross-validation canceled.')
             return
-
+        
         db = dbconnect.DBConnect.getInstance()
         groups = [db.get_platewell_for_object(key) for key in self.classifier.trainingSet.get_object_keys()]
 
         t1 = time()
-        dlg = wx.ProgressDialog('Computing cross validation accuracy...', '0% Complete', 100, self.classifier, wx.PD_ELAPSED_TIME | wx.PD_ESTIMATED_TIME | wx.PD_REMAINING_TIME | wx.PD_CAN_ABORT)
+        dlg = wx.ProgressDialog('Computing cross validation accuracy...', '0% Complete', 100, self.classifier, wx.PD_ELAPSED_TIME | wx.PD_ESTIMATED_TIME | wx.PD_REMAINING_TIME | wx.PD_CAN_ABORT)        
         base = 0.0
         scale = 1.0
 
@@ -170,12 +169,156 @@ class FastGentleBoosting(object):
             return ''
 
     def Train(self, colnames, num_learners, label_matrix, values, fout=None, do_prof=False, test_values=None, callback=None):
-        self.model = AdaBoostClassifier(n_estimators=5)
-        #SKLEARN convert label matrix to numerical class
-        classes = np.nonzero(label_matrix == 1)[1] + 1
-        self.model.fit(values, classes)
-        print classes, self.model
+        '''
+        label_matrix is an n by k numpy array containing values of either +1 or -1
+        values is the n by j numpy array of cell measurements
+        n = #example cells, k = #classes, j = #measurements
+        Return a list of learners.  Each learner is a tuple (column, thresh, a,
+        b, average_margin), where column is an integer index into colnames
+        '''
+        if 0 in values.shape:
+            # Nothing to train
+            return None
+        assert label_matrix.shape[0] == values.shape[0] # Number of training examples.
+        computed_labels = np.zeros(label_matrix.shape, np.float32)
+        num_examples, num_classes = label_matrix.shape
+        do_tests = (test_values is not None)
+        if do_tests:
+            num_tests = test_values.shape[0]
+            computed_test_labels = np.zeros((num_tests, num_classes), np.float32)
+            test_labels_by_iteration = []
+        # Set weights, normalize by number of examples
+        weights = np.ones(label_matrix.shape, np.float32)
+        margin_correct = np.zeros((num_examples, num_classes-1), np.float32)
+        margin_incorrect = np.zeros((num_examples, num_classes-1), np.float32)
+        for idx in range(num_classes):
+            classmask = (label_matrix[:, idx] == 1).reshape((num_examples, 1))
+            num_examples_class = sum(classmask)
+            weights[np.tile(classmask, (1, num_classes))] /= num_examples_class
+        balancing = weights.copy()
 
+        def GetOneWeakLearner(ctl=None, tlbi=None):
+            best_error = float(np.Infinity)
+            for feature_idx in range(values.shape[1]):
+                thresh, err, a, b = self.TrainWeakLearner(label_matrix, weights, values[:, feature_idx])
+                if err < best_error:
+                    best_error = err
+                    bestvals = (err, feature_idx, thresh, a, b)
+            err, column, thresh, a, b = bestvals
+            # recompute weights
+            delta = np.reshape(values[:, column] > thresh, (num_examples, 1))
+            feature_thresh_mask = np.tile(delta, (1, num_classes))
+            adjustment = feature_thresh_mask * np.tile(a, (num_examples, 1)) + (1 - feature_thresh_mask) * np.tile(b, (num_examples, 1))
+            recomputed_labels = computed_labels + adjustment
+            reweights = balancing * np.exp(- recomputed_labels * label_matrix)
+            reweights = reweights / sum(reweights)
+
+            # if we have test values, update their computed labels
+            if ctl is not None:
+                test_delta = np.reshape(test_values[:, column] > thresh, (num_tests, 1))
+                test_feature_thresh_mask = np.tile(test_delta, (1, num_classes))
+                test_adjustment = test_feature_thresh_mask * np.tile(a, (num_tests, 1)) + (1 - test_feature_thresh_mask) * np.tile(b, (num_tests, 1))
+                ctl += test_adjustment
+                tlbi += [ctl.argmax(axis=1)]
+
+            return (err, colnames[int(column)], thresh, a, b, reweights, recomputed_labels, adjustment)
+
+        self.model = []
+        for weak_count in range(num_learners):
+            if do_tests:
+                err, colname, thresh, a, b, reweight, recomputed_labels, adjustment = GetOneWeakLearner(ctl=computed_test_labels, tlbi=test_labels_by_iteration)
+            else:
+                err, colname, thresh, a, b, reweight, recomputed_labels, adjustment = GetOneWeakLearner()
+
+            # compute margins
+            step_correct_class = adjustment[label_matrix > 0].reshape((num_examples, 1))
+            step_relative = step_correct_class - (adjustment[label_matrix < 0].reshape((num_examples, num_classes - 1)))
+            mask = (step_relative > 0)
+            margin_correct += step_relative * mask
+            margin_incorrect += (- step_relative) * (~ mask)
+            expected_worst_margin = sum(balancing[:,0] * (margin_correct / (margin_correct + margin_incorrect)).min(axis=1)) / sum(balancing[:,0])
+
+            computed_labels = recomputed_labels
+            self.model += [(colname, thresh, a, b, expected_worst_margin)]
+
+            if callback is not None:
+                callback(weak_count / float(num_learners))
+
+            if fout:
+                colname, thresh, a, b, e_m = self.model[-1]
+                fout.write("IF (%s > %s, %s, %s)\n" %
+                           (colname, repr(thresh),
+                            "[" + ", ".join([repr(v) for v in a]) + "]",
+                            "[" + ", ".join([repr(v) for v in b]) + "]"))
+            if err == 0.0:
+                break
+            weights = reweight
+        if do_tests:
+            return test_labels_by_iteration
+
+    def TrainWeakLearner(self, labels, weights, values):
+        ''' For a multiclass training set, with C classes and N examples,
+        finds the optimal weak learner in O(M * N logN) time.
+        Optimality is defined by Eq. 7 of Torralba et al., 'Sharing visual
+        features...', 2007, IEEE PAMI.
+
+        We differ from Torralba et al. in two ways:
+        - we do not share a's and b's between classes
+        - we always solve for the complete set of examples, regardless of label
+
+        Labels should be 1 and -1, only.
+        label_matrix and weights are NxC.
+        values is N
+        '''
+
+        global order, s_values, s_labels, s_weights, s_weights_times_labels, num_a, den_a, a, b, sless0, sgrtr0, w_below_neg, w_below_pos, w_above_neg, w_above_pos, J
+
+        # Sort labels and weights by values (AKA possible thresholds).  By
+        # default, argsort is not stable, so the results will vary
+        # slightly with the number of workers.  Add kind="mergesort" to
+        # get a stable sort, which avoids this.
+        order = np.argsort(values)
+        s_values = values[order]
+        s_labels = labels[order, :]
+        s_weights = weights[order, :]
+
+        # useful subfunction
+        num_examples = labels.shape[0]
+        def tilesum(a):
+            return np.tile(np.sum(a, axis=0), (num_examples, 1))
+
+        # Equations 9 and 10 of Torralba et al.
+        s_weights_times_labels = s_weights * s_labels
+        num_a = (tilesum(s_weights_times_labels) - np.cumsum(s_weights_times_labels, axis=0))
+        den_a = (tilesum(s_weights) - np.cumsum(s_weights, axis=0))
+        den_a[den_a <= 0.0] = 1.0 # avoid div by zero
+        a = num_a / den_a
+        b = np.cumsum(s_weights_times_labels, axis=0) / np.cumsum(s_weights, axis=0)
+
+        # We need, at each index, the total weights below and above,
+        # separated by positive and negative label.  Below includes the
+        # current index
+        sless0 = (s_labels < 0)
+        sgrtr0 = (s_labels > 0)
+        w_below_neg = np.cumsum(s_weights * sless0, axis=0)
+        w_below_pos = np.cumsum(s_weights * sgrtr0, axis=0)
+        w_above_neg = tilesum(s_weights * sless0) - w_below_neg
+        w_above_pos = tilesum(s_weights * sgrtr0) - w_below_pos
+
+        # Now evaluate the error at each threshold.
+        # (see Equation 7, and note that we're assuming -1 and +1 for entries in the label matrix.
+        J = w_below_neg * ((-1 - b)**2) + w_below_pos * ((1 - b)**2) + w_above_neg * ((-1 - a)**2) + w_above_pos * ((1 - a)**2)
+        J = J.sum(axis=1)
+
+        # Find index of least error
+        idx = np.argmin(J)
+
+        # make sure we're at the top of this thresh
+        while (idx+1 < len(s_values)) and (s_values[idx] == s_values[idx + 1]):
+            idx += 1
+
+        # return the threshold at that index
+        return s_values[idx], J[idx], a[idx, :].copy(), b[idx, :].copy()
 
     def UpdateBins(self, classBins):
         self.classBins = classBins
@@ -295,3 +438,107 @@ if __name__ == '__main__':
         print w
     print label_matrix.shape, "groups"
     print fgb.xvalidate(colnames, num_learners, label_matrix, values, 20, range(1, label_matrix.shape[0]+1), None)
+
+#def train_classifier(labels, values, iterations):
+#    # make sure these are arrays (not matrices)
+#    labels = array(labels)
+#    values = array(values)
+#
+#    num_examples = labels.shape[0]
+#
+#    learners = []
+#    weights = ones(labels.shape)
+#    output = zeros(labels.shape)
+#    for n in range(iterations):
+#        best_error = float(Infinity)
+#
+#        for feature_idx in range(values.shape[1]):
+#            val, err, a, b = trainWeakLearner(labels, weights, values[:, feature_idx])
+#            if err < best_error:
+#                best_error = err
+#                best_idx = feature_idx
+#                best_val = val
+#                best_a = a
+#                best_b = b
+#
+#        delta = values[:, best_idx] > best_val
+#        delta.shape = (len(delta), 1)
+#        feature_thresh_mask = tile(delta, (1, labels.shape[1]))
+#        output = output + feature_thresh_mask * tile(best_a, (num_examples, 1)) + (1 - feature_thresh_mask) * tile(best_b, (num_examples, 1))
+#        weights = exp(- output * labels)
+#        weights = weights / sum(weights)
+#        err = sum((output * labels) <= 0)
+#    return
+#
+#def myfromfile(stream, type, sh):
+#    if len(sh) == 2:
+#        tot = sh[0] * sh[1]
+#    else:
+#        tot = sh[0]
+#    result = fromfile(stream, type, tot)
+#    result.shape = sh
+#    return result
+#
+#def doit():
+#    testing = False
+#    n, ncols = myfromfile(stdin, int32, (2,))
+#    num_classes = myfromfile(stdin, int32, (1,))[0]
+#    values = myfromfile(stdin, float32, (n, ncols))
+#    label_matrix = myfromfile(stdin, int32, (n, num_classes))
+#
+#    while True:
+#        # It would be cleaner to tell the worker we're done by just
+#        # closing the stream, but numpy does strange things (prints
+#        # error message, signals MemoryError) when myfromfile cannot
+#        # read as many bytes as expected.
+#        if stdin.readline() == "done\n":
+#            return
+#        weights = myfromfile(stdin, float32, (n, num_classes))
+#
+#        best = float(Infinity)
+#        for column in range(ncols):
+#            colvals = values[:, column]
+#            # print >>stderr, "WORK", column, label_matrix, weights, colvals
+#            thresh, err, a, b = trainWeakLearner(label_matrix, weights, colvals)
+#            if err < best:
+#                best = err
+#                bestvals = (err, column, thresh, a, b)
+#
+#        err, column, thresh, a, b = bestvals
+#        array([err, column, thresh], float32).tofile(stdout)
+#        a.astype(float32).tofile(stdout)
+#        b.astype(float32).tofile(stdout)
+#        stdout.flush()
+
+
+
+#if __name__ == '__main__':
+#    try:
+#        import dl
+#        h = dl.open('change_malloc_zone.dylib')
+#        h.call('setup')
+#    except:
+#        pass
+#    if len(argv) != 1:
+#        import cProfile
+#        cProfile.runctx("doit()", globals(), locals(), "worker.cprof")
+#    else:
+#        try: # Use binary I/O on Windows
+#            import msvcrt, os
+#            try:
+#                msvcrt.setmode(stdin.fileno(), os.O_BINARY)
+#            except:
+#                stderr.write("Couldn't deal with stdin\n")
+#                pass
+#            try:
+#                msvcrt.setmode(stdout.fileno(), os.O_BINARY)
+#                stderr.write("Couldn't deal with stdout\n")
+#            except:
+#                pass
+#        except ImportError:
+#            pass
+#        doit()
+#    try:
+#        h.call('teardown')
+#    except:
+#        pass
