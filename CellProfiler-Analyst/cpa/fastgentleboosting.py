@@ -1,7 +1,7 @@
 import re
 import dbconnect
 import logging
-import multiclasssql
+import multiclasssql_legacy as multiclasssql # Legacy code for scoring cells
 import numpy as np
 import matplotlib.pyplot as plt
 from sys import stdin, stdout, argv, exit
@@ -17,7 +17,7 @@ class FastGentleBoosting(object):
 
     def CheckProgress(self):
         import wx
-        ''' Called when the CheckProgress Button is pressed. '''
+        ''' Called when the Cross Validation Button is pressed. '''
         # get wells if available, otherwise use imagenumbers
         try:
             nRules = int(self.classifier.nRulesTxt.GetValue())

@@ -186,11 +186,19 @@ class Classifier(wx.Frame):
         self.find_rules_sizer.Add(self.nRulesTxt)
         self.find_rules_sizer.Add((5, 20))
         self.find_rules_sizer.Add(self.trainClassifierBtn)
-        self.checkProgressBtn = wx.Button(self.find_rules_panel, -1, 'Cross Validation')
+        # Cross Validation Button
+        self.checkProgressBtn = wx.Button(self.find_rules_panel, -1, 'Check Progress')
         self.checkProgressBtn.Disable()
         self.find_rules_sizer.Add((5, 20))
         self.find_rules_sizer.Add(self.checkProgressBtn)
         self.Bind(wx.EVT_BUTTON, self.OnCheckProgress, self.checkProgressBtn)
+        # Plot nice graphics Button
+        self.plotBtn = wx.Button(self.find_rules_panel, -1, 'Plot Results')
+        self.plotBtn.Disable()
+        self.find_rules_sizer.Add((5, 20))
+        self.find_rules_sizer.Add(self.plotBtn)
+        self.Bind(wx.EVT_BUTTON, self.OnPlotResults, self.plotBtn)
+
         self.find_rules_sizer.Add((5, 20))
         self.find_rules_sizer.Add(self.scoreAllBtn)
         self.find_rules_sizer.Add((5, 20))
@@ -237,24 +245,27 @@ class Classifier(wx.Frame):
         # JEN - End Add
         self.fetchSizer.Hide(self.fetchFromGroupSizer)
 
-        # JK - Start Add
-        # Define the classification algorithms and set the default
-        self.algorithm = FastGentleBoosting(self)
-        self.complexityTxt.SetLabel(str(self.algorithm.ComplexityTxt()))
+        
 
         if scikits_loaded:
             # Define Classifiers
             AdaBoostClassifier = GeneralClassifier("ensemble.AdaBoostClassifier()")
             SupportVectorMachines = GeneralClassifier("svm.LinearSVC()")
+            RandomForestClassifier = GeneralClassifier("ensemble.RandomForestClassifier()")
 
-            # End definition
+        # JK - Start Add
+        # Define the Random Forest classification algorithm to be default and set the default
+        self.algorithm = RandomForestClassifier
+        # self.complexityTxt.SetLabel(str(self.algorithm.ComplexityTxt()))
+
 
         self.algorithms = {
             # Legacy code
             'fastgentleboosting': FastGentleBoosting(self),
             # TODO adapt if scikit loaded inside object
             'adaboost': AdaBoostClassifier,
-            'supportvectormachines': SupportVectorMachines
+            'supportvectormachines': SupportVectorMachines,
+            'randomforest': RandomForestClassifier
         }
         # JK - End Add
 
@@ -429,29 +440,30 @@ class Classifier(wx.Frame):
         # Channel Menus
         self.CreateChannelMenus()
 
-        # JK - Start Add
         # Classifier Type chooser
         self.classifierMenu = wx.Menu();
-        fgbMenuItem = self.classifierMenu.AppendRadioItem(-1, text='Fast Gentle Boosting', help='Uses the Fast Gentle Boosting algorithm to find classifier rules.')
         if scikits_loaded:
-            adaMenuItem = self.classifierMenu.AppendRadioItem(-1, text='Ada Boost', help='Uses Ada Boost to find classifier rules.')
-            svmMenuItem = self.classifierMenu.AppendRadioItem(-1, text='Support Vector Machines', help='User Support Vector Machines to find classifier rules.')
+            rfMenuItem = self.classifierMenu.AppendRadioItem(-1, text='Random Forest', help='Uses Random Forest to classify')
+            adaMenuItem = self.classifierMenu.AppendRadioItem(-1, text='Ada Boost', help='Uses Ada Boost to classify.')
+            svmMenuItem = self.classifierMenu.AppendRadioItem(-1, text='Support Vector Machines', help='User Support Vector Machines to classify.')
+        fgbMenuItem = self.classifierMenu.AppendRadioItem(-1, text='Fast Gentle Boosting', help='Uses the Fast Gentle Boosting algorithm to find classifier rules.')
         self.GetMenuBar().Append(self.classifierMenu, 'Classifier')
-        # JK - End Add
 
         # Bind events to different menu items
         self.Bind(wx.EVT_MENU, self.OnLoadTrainingSet, self.loadTSMenuItem)
         self.Bind(wx.EVT_MENU, self.OnSaveTrainingSet, self.saveTSMenuItem)
-        ##        self.Bind(wx.EVT_MENU, self.OnLoadModel, self.loadModelMenuItem) # JEN - Added
-        ##        self.Bind(wx.EVT_MENU, self.SaveModel, self.saveModelMenuItem) # JEN - Added
+        self.Bind(wx.EVT_MENU, self.OnLoadModel, self.loadModelMenuItem) # JEN - Added
+        self.Bind(wx.EVT_MENU, self.SaveModel, self.saveModelMenuItem) # JEN - Added
         self.Bind(wx.EVT_MENU, self.OnShowImageControls, imageControlsMenuItem)
         self.Bind(wx.EVT_MENU, self.OnRulesEdit, rulesEditMenuItem)
 
-        self.Bind(wx.EVT_MENU, self.AlgorithmSelect, fgbMenuItem) # JK - Added
         # Bind events for algorithms
         if scikits_loaded:
-            self.Bind(wx.EVT_MENU, self.AlgorithmSelect, adaMenuItem) # JK - Added
-            self.Bind(wx.EVT_MENU, self.AlgorithmSelect, svmMenuItem) # JK - Added
+            self.Bind(wx.EVT_MENU, self.AlgorithmSelect, adaMenuItem)  
+            self.Bind(wx.EVT_MENU, self.AlgorithmSelect, svmMenuItem) 
+            self.Bind(wx.EVT_MENU, self.AlgorithmSelect, rfMenuItem)
+        self.Bind(wx.EVT_MENU, self.AlgorithmSelect, fgbMenuItem) 
+
 
     def CreateChannelMenus(self):
         ''' Create color-selection menus for each channel. '''
@@ -705,15 +717,18 @@ class Classifier(wx.Frame):
         self.trainClassifierBtn.Enable()
         if hasattr(self, 'checkProgressBtn'):
             self.checkProgressBtn.Enable()
+            self.plotBtn.Enable() # added DD
         if len(self.classBins) <= 1:
             self.trainClassifierBtn.Disable()
             if hasattr(self, 'checkProgressBtn'):
                 self.checkProgressBtn.Disable()
+                self.plotBtn.Disable() # added DD
         for bin in self.classBins:
             if bin.empty:
                 self.trainClassifierBtn.Disable()
                 if hasattr(self, 'checkProgressBtn'):
                     self.checkProgressBtn.Disable()
+                    self.plotBtn.Disable() # added DD
 
     def OnFetch(self, evt):
         # Parse out the GUI input values
@@ -884,13 +899,12 @@ class Classifier(wx.Frame):
             self.PostMessage('Error loading classifier model')
         finally:
             self.UpdateClassChoices()
-            self.rules_text.Value = self.algorithm.ShowModel()
             self.keysAndCounts = None
 
     def SaveModel(self, evt=None):
         if not self.defaultModelFileName:
             self.defaultModelFileName = 'my_model.model'
-        if not self.algorithm.model:
+        if not self.algorithm.classifier:
             logging.error('No classifier model has been created. Please create one before saving')
             return
 
@@ -944,6 +958,7 @@ class Classifier(wx.Frame):
                     bin.AddObjects(keysPerBin[bin.label], self.chMap, priority=2)
 
             self.PostMessage('Training set loaded.')
+            self.GetNumberOfClasses() # Logs number of classes
 
     def OnSaveTrainingSet(self, evt):
         self.SaveTrainingSet()
@@ -1008,6 +1023,10 @@ class Classifier(wx.Frame):
 
     def OnCheckProgress(self, evt):
         self.algorithm.CheckProgress()
+
+    # Added by DD
+    def OnPlotResults(self, evt):
+        self.algorithm.PlotResults()
 
     def UpdateTrainingSet(self):
         # pause tile loading
@@ -1074,14 +1093,11 @@ class Classifier(wx.Frame):
                 if self.algorithm.name == "FastGentleBoosting":
                     self.algorithm.Train(
                         self.trainingSet.colnames, nRules, self.trainingSet.label_matrix,
-                        self.trainingSet.values, output, callback=cb
+                        self.trainingSet.values, output, cb
                     )
                 else:
-                    ## Parsing original label_matrix into numpy format 
-                    ## Original [-1 1] -> [0 1] (take only second?)
-                    sk_label_matrix = np.nonzero(self.trainingSet.label_matrix + 1)[1] + 1
-
-                    self.algorithm.Train(sk_label_matrix, self.trainingSet.values, output)
+                    # Convert labels
+                    self.algorithm.Train(self.trainingSet.label_matrix, self.trainingSet.values, output)
                 # JK - End Modification
 
                 self.PostMessage('Classifier trained in %.1fs.' % (time() - t1))
@@ -1218,7 +1234,12 @@ class Classifier(wx.Frame):
                     raise StopCalculating()
 
             try:
-                self.keysAndCounts = self.algorithm.PerImageCounts(filter_name=filter, cb=update)
+                # Adapter Pattern to switch between Legacy code and SciKit Learn
+                if self.algorithm.name == "FastGentleBoosting":
+                    self.keysAndCounts = self.algorithm.PerImageCounts(filter_name=filter, cb=update)
+                else:
+                    number_of_classes = self.GetNumberOfClasses()
+                    self.keysAndCounts = self.algorithm.PerImageCounts(number_of_classes, filter, update)
             except StopCalculating:
                 dlg.Destroy()
                 self.SetStatusText('Scoring canceled.')
@@ -1601,6 +1622,12 @@ class Classifier(wx.Frame):
         #      it needs to be trashed if Classifier is to be reopened since it
         #      will otherwise grab the existing instance with a dead tileLoader
         tilecollection.TileCollection._forgetClassInstanceReferenceForTesting()
+
+    # Get number of labels/classes we have in our training set
+    def GetNumberOfClasses(self):
+        number_of_classes = len(self.trainingSet.labels)
+        logging.info("We have " + str(number_of_classes) + " Classes")
+        return number_of_classes
 
 
 class StopCalculating(Exception):

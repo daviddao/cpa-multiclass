@@ -12,6 +12,7 @@ from sklearn import cross_validation
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn import metrics
 import cPickle, json
+from sklearn.externals import joblib
 
 '''
 TODO missing functions for class algorithm
@@ -22,19 +23,68 @@ GetComplxTxt <- Get params
 class GeneralClassifier(BaseEstimator, ClassifierMixin):
     def __init__(self, classifier = "lda.LDA()"):
         logging.info('Initialized New Classifier: ' + classifier)
-        self.name = "Not Gentle Boosting!"
+        self.name = "Not Gentle Boosting!" # For keeping legacy code
         self.classBins = []
         self.classifier = eval(classifier)
         self.trained = False
 
+
+    # A converter function for labels
+    def label2np(self, labels):
+        ## Parsing original label_matrix into numpy format 
+        ## Original [-1 1] -> [0 1] (take only second?)
+        return np.nonzero(labels + 1)[1] + 1
+
+    # Used to plot results in a seperate matlab lib
+    def PlotResults(self):
+        import numpy as np
+        import matplotlib.pyplot as plt
+        from sklearn import svm
+        #from sklearn.linear_model import SGDClassifier
+
+        # we create 40 separable points
+        rng = np.random.RandomState(0)
+        n_samples_1 = 1000
+        n_samples_2 = 100
+        X = np.r_[1.5 * rng.randn(n_samples_1, 2),
+                  0.5 * rng.randn(n_samples_2, 2) + [2, 2]]
+        y = [0] * (n_samples_1) + [1] * (n_samples_2)
+
+        # fit the model and get the separating hyperplane
+        clf = svm.SVC(kernel='linear', C=1.0)
+        clf.fit(X, y)
+
+        w = clf.coef_[0]
+        a = -w[0] / w[1]
+        xx = np.linspace(-5, 5)
+        yy = a * xx - clf.intercept_[0] / w[1]
+
+
+        # get the separating hyperplane using weighted classes
+        wclf = svm.SVC(kernel='linear', class_weight={1: 10})
+        wclf.fit(X, y)
+
+        ww = wclf.coef_[0]
+        wa = -ww[0] / ww[1]
+        wyy = wa * xx - wclf.intercept_[0] / ww[1]
+
+        # plot separating hyperplanes and samples
+        h0 = plt.plot(xx, yy, 'k-', label='no weights')
+        h1 = plt.plot(xx, wyy, 'k--', label='with weights')
+        plt.scatter(X[:, 0], X[:, 1], c=y, cmap=plt.cm.Paired)
+        plt.legend()
+
+        plt.axis('tight')
+        plt.show()
+
     def CheckProgress(self):
         import wx
-        ''' Called when the CheckProgress Button is pressed. '''
+        ''' Called when the Cross Validation Button is pressed. '''
         # get wells if available, otherwise use imagenumbers
         try:
             nRules = int(self.classifier.nRulesTxt.GetValue())
         except:
-            logging.error('Unable to parse number of rules')
+            logging.error('failed crossvalidation')
             return
 
         if not self.classifier.UpdateTrainingSet():
@@ -81,16 +131,16 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
     def LoadModel(self, model_filename):
 
         try:
-            with open(model_filename, 'r') as infile:
-                self.model, self.bin_labels = cPickle.load(infile)
+            self.classifier, self.bin_labels = joblib.load(model_filename)
         except:
-            self.model = None
+            self.classifier = None
             self.bin_labels = None
-            logging.error('The loaded model was not a fast gentle boosting model')
+            logging.error('Model not correctly loaded')
             raise TypeError
 
 
     def LOOCV(self, labels, values, details=False):
+        labels = self.label2np(labels);
         '''
         Performs leave one out cross validation.
         Takes a subset of the input data label_array and values to do the cross validation.
@@ -101,7 +151,7 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
         scores = np.zeros(num_samples)
         detailedResults = np.zeros(num_samples)
         # get training and testing set, train on training set, score on test set
-        for train, test in cross_validation.LeaveOneOut(n=num_samples):
+        for train, test in cross_validation.LeaveOneOut(num_samples):
             values_test = values[test]
             label_test = labels[test]
             self.Train(labels[train], values[train], fout=None)
@@ -112,8 +162,8 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
             return scores, detailedResults
         return scores
 
-    def PerImageCounts(self, filter_name=None, cb=None):
-        return multiclasssql.PerImageCounts(self, filter_name=filter_name, cb=cb)
+    def PerImageCounts(self, number_of_classes, filter_name=None, cb=None):
+        return multiclasssql.PerImageCounts(self, number_of_classes, filter_name, cb)
 
     def Predict(self, test_values, fout=None):
         '''RETURNS: np array of predicted classes of input data test_values '''
@@ -123,8 +173,7 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
         return np.array(predictions)
 
     def SaveModel(self, model_filename, bin_labels):
-        with open(model_filename, 'w') as outfile:
-            cPickle.dump((self.model, bin_labels), outfile)
+        joblib.dump((self.classifier, bin_labels), model_filename, compress=9)
 
     def ShowModel(self):#SKLEARN TODO
         '''
@@ -134,6 +183,9 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
 
     def Train(self, labels, values, fout=None):
         '''Trains classifier using values and label_array '''
+
+        labels = self.label2np(labels)
+
         self.classifier.fit(values, labels)
         self.trained = True
         if fout:
@@ -164,6 +216,10 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
         Takes a subset of the input data label_array and values to do the cross validation.
         RETURNS: array of length folds of cross validation scores
         '''
+
+        labels = self.label2np(labels)
+
+
         num_samples = values.shape[0]
         if stratified:
             CV = folds
@@ -181,6 +237,10 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
         :param folds: number of folds
         :return: score for each fold
         '''
+
+        labels = self.label2np(labels)
+
+
         n_samples = values.shape[0]
         unique_labels, indices = np.unique(labels, return_inverse=True)
         label_counts = np.bincount(indices) #count of each class
@@ -209,6 +269,9 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
         :param stratified: boolean whether to use stratified K fold
         :return: cross-validated estimates for each input data point
         '''
+
+        labels = self.label2np(labels)
+
         num_samples = values.shape[0]
         if stratified:
             CV = folds

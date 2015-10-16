@@ -122,7 +122,6 @@ def FilterObjectsFromClassN(classNum, classifier, filterKeys):
 
     predicted_classes = classifier.Predict(cell_data)
     res = object_keys[predicted_classes == classNum * np.ones(predicted_classes.shape)].tolist() #convert to list 
-
     return map(tuple,res) # ... and then to tuples
 
 def _objectify(p, field):
