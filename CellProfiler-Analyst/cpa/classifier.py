@@ -193,7 +193,7 @@ class Classifier(wx.Frame):
         self.find_rules_sizer.Add(self.checkProgressBtn)
         self.Bind(wx.EVT_BUTTON, self.OnCheckProgress, self.checkProgressBtn)
         # Plot nice graphics Button
-        self.plotBtn = wx.Button(self.find_rules_panel, -1, 'Plot Results')
+        self.plotBtn = wx.Button(self.find_rules_panel, -1, 'Plot Embedding')
         self.plotBtn.Disable()
         self.find_rules_sizer.Add((5, 20))
         self.find_rules_sizer.Add(self.plotBtn)
@@ -249,9 +249,10 @@ class Classifier(wx.Frame):
 
         if scikits_loaded:
             # Define Classifiers
-            AdaBoostClassifier = GeneralClassifier("ensemble.AdaBoostClassifier()")
-            SupportVectorMachines = GeneralClassifier("svm.LinearSVC()")
-            RandomForestClassifier = GeneralClassifier("ensemble.RandomForestClassifier()")
+            AdaBoostClassifier = GeneralClassifier("ensemble.AdaBoostClassifier()", self)
+            SupportVectorMachines = GeneralClassifier("svm.LinearSVC()", self)
+            RandomForestClassifier = GeneralClassifier("ensemble.RandomForestClassifier(n_estimators=200)", self)
+            FastGentleBoostingClassifier = FastGentleBoosting(self)
 
         # JK - Start Add
         # Define the Random Forest classification algorithm to be default and set the default
@@ -272,7 +273,7 @@ class Classifier(wx.Frame):
             # TODO adapt if scikit loaded inside object
             'adaboost': AdaBoostClassifier,
             'supportvectormachines': SupportVectorMachines,
-            'fastgentleboosting': FastGentleBoosting(self)
+            'fastgentleboosting': FastGentleBoostingClassifier
         }
         # JK - End Add
 
@@ -984,7 +985,7 @@ class Classifier(wx.Frame):
             # wx.FD_CHANGE_DIR doesn't seem to work in the FileDialog, so I do it explicitly
             self.defaultTSFileName = os.path.basename(filename)
 
-            self.trainingSet = TrainingSet(p, filename, labels_only=True)
+            self.trainingSet = TrainingSet(p, filename, labels_only=False)
 
             self.RemoveAllSortClasses()
             for label in self.trainingSet.labels:
@@ -1067,7 +1068,7 @@ class Classifier(wx.Frame):
 
     # Added by DD
     def OnPlotResults(self, evt):
-        self.algorithm.PlotResults()
+        self.PlotResults()
 
     def UpdateTrainingSet(self):
         # pause tile loading
@@ -1138,7 +1139,9 @@ class Classifier(wx.Frame):
                     )
                 else:
                     # Convert labels
+                    logging.info(self.trainingSet.values)
                     self.algorithm.Train(self.trainingSet.label_matrix, self.trainingSet.values, output)
+
                 # JK - End Modification
 
                 self.PostMessage('Classifier trained in %.1fs.' % (time() - t1))
@@ -1667,8 +1670,53 @@ class Classifier(wx.Frame):
     # Get number of labels/classes we have in our training set
     def GetNumberOfClasses(self):
         number_of_classes = len(self.trainingSet.labels)
-        logging.info("We have " + str(number_of_classes) + " Classes")
+        # logging.info("We have " + str(number_of_classes) + " Classes")
         return number_of_classes
+
+    # Random Forest Embedding of the Training Data
+    def PlotResults(self):
+        import matplotlib.pyplot as plt
+        from matplotlib import offsetbox
+        from sklearn import (manifold, datasets, decomposition, ensemble, lda,
+                     random_projection)
+
+        labels = self.algorithm.label2np(self.trainingSet.label_matrix)
+        classes = self.GetNumberOfClasses()
+        # Function to plot embedding
+        def plot_embedding(X, title=None):
+            x_min, x_max = np.min(X, 0), np.max(X, 0)
+            X = (X - x_min) / (x_max - x_min)
+
+            plt.figure()
+            ax = plt.subplot(111)
+            for i in range(X.shape[0]):
+                plt.text(X[i, 0], X[i, 1], str(labels[i]),
+                color=plt.cm.Set1(labels[i] / float(classes)),
+                fontdict={'weight': 'bold', 'size': 9})
+
+
+
+            plt.xticks([]), plt.yticks([])
+            if title is not None:
+                plt.title(title)
+
+            plt.show()
+
+        # t-SNE embedding of the digits dataset
+        hasher = ensemble.RandomTreesEmbedding(n_estimators=200, random_state=0,
+                                       max_depth=5)
+
+        X = self.trainingSet.values
+        t0 = time()
+        X_transformed = hasher.fit_transform(X)
+        pca = decomposition.TruncatedSVD(n_components=2)
+        t0 = time()
+        X_reduced = pca.fit_transform(X_transformed)
+
+        plot_embedding(X_reduced,
+                       "Random Forest Embedding of Training Set (time %.2fs)" %
+                       (time() - t0))
+        
 
 
 class StopCalculating(Exception):

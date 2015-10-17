@@ -21,12 +21,14 @@ GetComplxTxt <- Get params
 '''
 
 class GeneralClassifier(BaseEstimator, ClassifierMixin):
-    def __init__(self, classifier = "lda.LDA()"):
+    def __init__(self, classifier = "lda.LDA()", env=None):
         logging.info('Initialized New Classifier: ' + classifier)
         self.name = "" # Name for User Information
         self.classBins = []
         self.classifier = eval(classifier)
         self.trained = False
+        self.env = env # Env is Classifier in Legacy Code -- maybe renaming ?
+
 
 
     # A converter function for labels
@@ -35,67 +37,27 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
         ## Original [-1 1] -> [0 1] (take only second?)
         return np.nonzero(labels + 1)[1] + 1
 
-    # Used to plot results in a seperate matlab lib
-    def PlotResults(self):
-        import numpy as np
-        import matplotlib.pyplot as plt
-        from sklearn import svm
-        #from sklearn.linear_model import SGDClassifier
-
-        # we create 40 separable points
-        rng = np.random.RandomState(0)
-        n_samples_1 = 1000
-        n_samples_2 = 100
-        X = np.r_[1.5 * rng.randn(n_samples_1, 2),
-                  0.5 * rng.randn(n_samples_2, 2) + [2, 2]]
-        y = [0] * (n_samples_1) + [1] * (n_samples_2)
-
-        # fit the model and get the separating hyperplane
-        clf = svm.SVC(kernel='linear', C=1.0)
-        clf.fit(X, y)
-
-        w = clf.coef_[0]
-        a = -w[0] / w[1]
-        xx = np.linspace(-5, 5)
-        yy = a * xx - clf.intercept_[0] / w[1]
-
-
-        # get the separating hyperplane using weighted classes
-        wclf = svm.SVC(kernel='linear', class_weight={1: 10})
-        wclf.fit(X, y)
-
-        ww = wclf.coef_[0]
-        wa = -ww[0] / ww[1]
-        wyy = wa * xx - wclf.intercept_[0] / ww[1]
-
-        # plot separating hyperplanes and samples
-        h0 = plt.plot(xx, yy, 'k-', label='no weights')
-        h1 = plt.plot(xx, wyy, 'k--', label='with weights')
-        plt.scatter(X[:, 0], X[:, 1], c=y, cmap=plt.cm.Paired)
-        plt.legend()
-
-        plt.axis('tight')
-        plt.show()
 
     def CheckProgress(self):
-        import wx
+        #import wx
         ''' Called when the Cross Validation Button is pressed. '''
         # get wells if available, otherwise use imagenumbers
-        try:
-            nRules = int(self.classifier.nRulesTxt.GetValue())
-        except:
-            logging.error('failed crossvalidation')
-            return
 
-        if not self.classifier.UpdateTrainingSet():
+        db = dbconnect.DBConnect.getInstance()
+        groups = [db.get_platewell_for_object(key) for key in self.env.trainingSet.get_object_keys()]
+
+        if not self.env.UpdateTrainingSet():
             self.PostMessage('Cross-validation canceled.')
             return
 
-        db = dbconnect.DBConnect.getInstance()
-        groups = [db.get_platewell_for_object(key) for key in self.classifier.trainingSet.get_object_keys()]
-
-        t1 = time()
-        dlg = wx.ProgressDialog('Nothing', '0% Complete', 100, self.classifier, wx.PD_ELAPSED_TIME | wx.PD_ESTIMATED_TIME | wx.PD_REMAINING_TIME | wx.PD_CAN_ABORT)
+        #t1 = time()
+        #dlg = wx.ProgressDialog('Nothing', '0% Complete', 100, self.classifier, wx.PD_ELAPSED_TIME | wx.PD_ESTIMATED_TIME | wx.PD_REMAINING_TIME | wx.PD_CAN_ABORT)
+        labels = self.env.trainingSet.label_matrix
+        values = self.env.trainingSet.values
+        classificationReport = self.ClassificationReport(labels, self.XValidatePredict(labels, values, folds=5, stratified=True))
+        print classificationReport
+        self.plot_classification_report(classificationReport)
+        
 
     def ClassificationReport(self, true_labels, predicted_labels, confusion_matrix=False):
         #metrics.confusion_matrix(true_labels, predicted_labels)
@@ -109,6 +71,7 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
         #    scorePerClass[label_count] = 1.0*sum(predicted_correct)/sum(indices)
 
         #print scorePerClass.mean()
+        true_labels = self.label2np(true_labels)
         return metrics.classification_report(true_labels, predicted_labels)
 
     def ClearModel(self):
@@ -188,9 +151,10 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
 
         self.classifier.fit(values, labels)
         self.trained = True
+
         if fout:
             print self.classifier
-
+        
     def UpdateBins(self, classBins):
         self.classBins = classBins
 
@@ -280,6 +244,43 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
 
         predictions = cross_validation.cross_val_predict(self.classifier, X=values, y=labels, cv=CV, n_jobs=1)
         return np.array(predictions)
+
+    # Plots the classification report for the user
+    def plot_classification_report(self, cr, title='Classification report ', with_avg_total=False, cmap=plt.cm.Greys):
+
+        lines = cr.split('\n')
+
+        classes = []
+        plotMat = []
+        for line in lines[2 : (len(lines) - 3)]:
+            #print(line)
+            t = line.split()
+            # print(t)
+            label = self.env.trainingSet.labels[int(t[0]) - 1]
+            classes.append(label)
+            v = [float(x) for x in t[1: len(t) - 1]]
+            plotMat.append(v)
+
+        if with_avg_total:
+            aveTotal = lines[len(lines) - 1].split()
+            classes.append('avg/total')
+            vAveTotal = [float(x) for x in t[1:len(aveTotal) - 1]]
+            plotMat.append(vAveTotal)
+
+
+        plt.imshow(plotMat, interpolation='nearest', cmap=cmap)
+        plt.title(title)
+        plt.colorbar()
+        x_tick_marks = np.arange(3)
+        y_tick_marks = np.arange(len(classes))
+        plt.xticks(x_tick_marks, ['precision', 'recall', 'f1-score'], rotation=45)
+        plt.yticks(y_tick_marks, classes)
+        plt.tight_layout()
+        plt.ylabel('Classes')
+        plt.xlabel('Measures')
+        plt.show()
+
+
 
 
 if __name__ == '__main__':
