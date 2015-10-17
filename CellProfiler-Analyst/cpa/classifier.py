@@ -256,16 +256,23 @@ class Classifier(wx.Frame):
         # JK - Start Add
         # Define the Random Forest classification algorithm to be default and set the default
         self.algorithm = RandomForestClassifier
+        self.algorithm.name = "RandomForest"
         # self.complexityTxt.SetLabel(str(self.algorithm.ComplexityTxt()))
 
+        # helps translating the checked item for loadModel
+        self.classifier2ItemId = {
+            'randomforest' : 1,
+            'adaboost' : 2,
+            'supportvectormachines' : 3,
+            'fastgentleboosting' : 4,
+        }
 
         self.algorithms = {
-            # Legacy code
-            'fastgentleboosting': FastGentleBoosting(self),
+            'randomforest': RandomForestClassifier,
             # TODO adapt if scikit loaded inside object
             'adaboost': AdaBoostClassifier,
             'supportvectormachines': SupportVectorMachines,
-            'randomforest': RandomForestClassifier
+            'fastgentleboosting': FastGentleBoosting(self)
         }
         # JK - End Add
 
@@ -333,6 +340,8 @@ class Classifier(wx.Frame):
         selectedItem = re.sub('[\W_]+', '', self.classifierMenu.FindItemById(event.GetId()).GetText())
         try:
             self.algorithm = self.algorithms[selectedItem.lower()]
+            # Save the name
+            self.algorithm.name = selectedItem
             logging.info("Algorithm " + selectedItem + " succesfully loaded")
         except:
             # Fall back to default algorithm
@@ -443,10 +452,10 @@ class Classifier(wx.Frame):
         # Classifier Type chooser
         self.classifierMenu = wx.Menu();
         if scikits_loaded:
-            rfMenuItem = self.classifierMenu.AppendRadioItem(-1, text='Random Forest', help='Uses Random Forest to classify')
-            adaMenuItem = self.classifierMenu.AppendRadioItem(-1, text='Ada Boost', help='Uses Ada Boost to classify.')
-            svmMenuItem = self.classifierMenu.AppendRadioItem(-1, text='Support Vector Machines', help='User Support Vector Machines to classify.')
-        fgbMenuItem = self.classifierMenu.AppendRadioItem(-1, text='Fast Gentle Boosting', help='Uses the Fast Gentle Boosting algorithm to find classifier rules.')
+            rfMenuItem = self.classifierMenu.AppendRadioItem(1, text='Random Forest', help='Uses Random Forest to classify')
+            adaMenuItem = self.classifierMenu.AppendRadioItem(2, text='Ada Boost', help='Uses Ada Boost to classify.')
+            svmMenuItem = self.classifierMenu.AppendRadioItem(3, text='Support Vector Machines', help='User Support Vector Machines to classify.')
+        fgbMenuItem = self.classifierMenu.AppendRadioItem(4, text='Fast Gentle Boosting', help='Uses the Fast Gentle Boosting algorithm to find classifier rules.')
         self.GetMenuBar().Append(self.classifierMenu, 'Classifier')
 
         # Bind events to different menu items
@@ -836,6 +845,7 @@ class Classifier(wx.Frame):
                                                               ['%s=%s' % (n, v) for n, v in zip(colNames, groupKey)]))
 
                 self.PostMessage('Classifying %s.' % (p.object_name[1]))
+
                 obKeys += self.algorithm.FilterObjectsFromClassN(obClass, obKeysToTry)
 
 
@@ -882,16 +892,45 @@ class Classifier(wx.Frame):
         # wx.FD_CHANGE_DIR doesn't seem to work in the FileDialog, so I do it explicitly
         os.chdir(os.path.split(filename)[0])
         self.defaultModelFileName = os.path.split(filename)[1]
-        self.RemoveAllSortClasses(False)
-        try:
+        # self.RemoveAllSortClasses(False) # Don't remove sorted classes
+        if True:
+
+            # Save old name for checking
+            tmp_name = self.algorithm.name
+
+            # Now algorithm.name is different! Don't move it before tmp_name
             self.algorithm.LoadModel(filename)
-            for label in self.algorithm.bin_labels:
-                self.AddSortClass(label)
+            # Save to select for later
+            select = self.algorithm.name
+
+            if self.algorithm.name != tmp_name:
+                logging.info("Detected different setted classifier: " + tmp_name + ", switching to " + self.algorithm.name)
+                # Restore the name
+                self.algorithm.name = tmp_name
+                self.algorithm = self.algorithms[select.lower()]
+                # Load again
+                self.algorithm.LoadModel(filename)
+
+            itemId = self.classifier2ItemId[select.lower()]
+            # Checks the MenuItem
+            self.classifierMenu.Check(itemId, True)
+
+            # for label in self.algorithm.bin_labels:
+            #     self.AddSortClass(label)
             for bin in self.classBins:
-                bin.trained = True
+                 bin.trained = True
             self.scoreAllBtn.Enable()
             self.scoreImageBtn.Enable()
             self.PostMessage('Classifier model succesfully loaded')
+
+            # Some User Information about the loaded Algorithm
+            self.PostMessage('Loaded trained classifier: ' + self.algorithm.name + ' on classes:')
+            for label in self.algorithm.bin_labels:
+                self.PostMessage(label)
+            self.PostMessage('CAUTION: Classifier needs to be trained on the current data set!')
+
+        try:
+            pass 
         except:
             self.scoreAllBtn.Disable()
             self.scoreImageBtn.Disable()
@@ -900,6 +939,8 @@ class Classifier(wx.Frame):
         finally:
             self.UpdateClassChoices()
             self.keysAndCounts = None
+
+
 
     def SaveModel(self, evt=None):
         if not self.defaultModelFileName:

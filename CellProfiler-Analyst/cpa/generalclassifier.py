@@ -23,7 +23,7 @@ GetComplxTxt <- Get params
 class GeneralClassifier(BaseEstimator, ClassifierMixin):
     def __init__(self, classifier = "lda.LDA()"):
         logging.info('Initialized New Classifier: ' + classifier)
-        self.name = "Not Gentle Boosting!" # For keeping legacy code
+        self.name = "" # Name for User Information
         self.classBins = []
         self.classifier = eval(classifier)
         self.trained = False
@@ -131,7 +131,7 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
     def LoadModel(self, model_filename):
 
         try:
-            self.classifier, self.bin_labels = joblib.load(model_filename)
+            self.classifier, self.bin_labels, self.name = joblib.load(model_filename)
         except:
             self.classifier = None
             self.bin_labels = None
@@ -173,7 +173,7 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
         return np.array(predictions)
 
     def SaveModel(self, model_filename, bin_labels):
-        joblib.dump((self.classifier, bin_labels), model_filename, compress=9)
+        joblib.dump((self.classifier, bin_labels, self.name), model_filename, compress=9)
 
     def ShowModel(self):#SKLEARN TODO
         '''
