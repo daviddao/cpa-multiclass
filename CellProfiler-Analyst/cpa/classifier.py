@@ -245,7 +245,7 @@ class Classifier(wx.Frame):
         # JEN - End Add
         self.fetchSizer.Hide(self.fetchFromGroupSizer)
 
-        
+
 
         if scikits_loaded:
             # Define Classifiers
@@ -258,7 +258,7 @@ class Classifier(wx.Frame):
         # Define the Random Forest classification algorithm to be default and set the default
         self.algorithm = RandomForestClassifier
         self.algorithm.name = "RandomForest"
-        # self.complexityTxt.SetLabel(str(self.algorithm.ComplexityTxt()))
+        self.complexityTxt.SetLabel(str(self.algorithm.ComplexityTxt()))
 
         # helps translating the checked item for loadModel
         self.classifier2ItemId = {
@@ -344,6 +344,7 @@ class Classifier(wx.Frame):
             # Save the name
             self.algorithm.name = selectedItem
             logging.info("Algorithm " + selectedItem + " succesfully loaded")
+            self.complexityTxt.SetLabel(str(self.algorithm.ComplexityTxt())) # Set new label to # box
         except:
             # Fall back to default algorithm
             logging.error('Could not load specified algorithm, falling back to default.')
@@ -381,7 +382,7 @@ class Classifier(wx.Frame):
         self.fetchBtn.SetToolTip(wx.ToolTip('Fetches images of %s to be sorted.' % (p.object_name[1])))
         self.rules_text.SetToolTip(wx.ToolTip('Rules are displayed in this text box.'))
         self.nRulesTxt.SetToolTip(
-            wx.ToolTip('The maximum number of rules classifier should use to define your phenotypes.'))
+            wx.ToolTip('The number of top features to show or fast gentle boosting learners.'))
         self.trainClassifierBtn.SetToolTip(wx.ToolTip(
             'Tell Classifier to train itself for classification of your phenotypes as you have sorted them.'))
         self.scoreAllBtn.SetToolTip(wx.ToolTip(
@@ -469,10 +470,10 @@ class Classifier(wx.Frame):
 
         # Bind events for algorithms
         if scikits_loaded:
-            self.Bind(wx.EVT_MENU, self.AlgorithmSelect, adaMenuItem)  
-            self.Bind(wx.EVT_MENU, self.AlgorithmSelect, svmMenuItem) 
+            self.Bind(wx.EVT_MENU, self.AlgorithmSelect, adaMenuItem)
+            self.Bind(wx.EVT_MENU, self.AlgorithmSelect, svmMenuItem)
             self.Bind(wx.EVT_MENU, self.AlgorithmSelect, rfMenuItem)
-        self.Bind(wx.EVT_MENU, self.AlgorithmSelect, fgbMenuItem) 
+        self.Bind(wx.EVT_MENU, self.AlgorithmSelect, fgbMenuItem)
 
 
     def CreateChannelMenus(self):
@@ -931,7 +932,7 @@ class Classifier(wx.Frame):
             self.PostMessage('CAUTION: Classifier needs to be trained on the current data set!')
 
         try:
-            pass 
+            pass
         except:
             self.scoreAllBtn.Disable()
             self.scoreImageBtn.Disable()
@@ -1128,7 +1129,7 @@ class Classifier(wx.Frame):
                 output = StringIO()
                 dlg = wx.ProgressDialog('Training classifier...', '0% Complete', 100, self,
                                         wx.PD_ELAPSED_TIME | wx.PD_ESTIMATED_TIME | wx.PD_REMAINING_TIME | wx.PD_CAN_ABORT)
-                
+
                 # JK - Start Modification
                 # Train the desired algorithm
                 # Legacy Code
@@ -1141,14 +1142,14 @@ class Classifier(wx.Frame):
                     # Convert labels
                     logging.info(self.trainingSet.values)
                     self.algorithm.Train(self.trainingSet.label_matrix, self.trainingSet.values, output)
+                    self.nRules = nRules # Hack
 
                 # JK - End Modification
 
                 self.PostMessage('Classifier trained in %.1fs.' % (time() - t1))
                 dlg.Destroy()
-                # Hack
-                if (self.algorithm.name == "FastGentleBoosting"):
-                    self.rules_text.Value = self.algorithm.ShowModel()
+
+                self.rules_text.Value = self.algorithm.ShowModel()
                 self.scoreAllBtn.Enable()
                 self.scoreImageBtn.Enable()
             except StopCalculating:
@@ -1716,7 +1717,7 @@ class Classifier(wx.Frame):
         plot_embedding(X_reduced,
                        "Random Forest Embedding of Training Set (time %.2fs)" %
                        (time() - t0))
-        
+
 
 
 class StopCalculating(Exception):
