@@ -1,3 +1,10 @@
+# Debuggin
+import sys
+sys.path.insert(1, '/home/vagrant/cpa-multiclass/CellProfiler-Analyst/cpa');
+sys.path.insert(1, '/home/vagrant/cpa-multiclass/CellProfiler-Analyst/')
+import cpa.sqltools
+
+
 import decimal
 import types
 import random
@@ -1888,6 +1895,6 @@ if __name__ == "__main__":
     import wx
     app = wx.PySimpleApp()
     logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
-    p.LoadFile('/Users/afraser/cpa_example/example.properties')
+    p.LoadFile('/vagrant/cpa_example/example.properties')
 
     app.MainLoop()

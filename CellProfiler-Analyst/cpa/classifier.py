@@ -1,9 +1,10 @@
 # Encoding: utf-8
 from __future__ import with_statement
 
-# This must come first for py2app/py2exe
-import matplotlib
+# Enable SciKit Learn
+scikits_loaded = True
 
+import matplotlib
 matplotlib.use('WXAgg')
 import tableviewer
 from datamodel import DataModel
@@ -26,10 +27,14 @@ import os
 import wx
 import re
 import cpa.helpmenu
-from supportvectormachines import SupportVectorMachines
-from generalclassifier import GeneralClassifier
 from dimensredux import PlotMain
-from sklearn.ensemble import AdaBoostClassifier
+
+import fastgentleboostingmulticlass
+from fastgentleboosting import FastGentleBoosting
+
+if scikits_loaded:
+    #from supportvectormachines import SupportVectorMachines
+    from generalclassifier import GeneralClassifier
 
 # number of cells to classify before prompting the user for whether to continue
 MAX_ATTEMPTS = 10000
@@ -181,11 +186,19 @@ class Classifier(wx.Frame):
         self.find_rules_sizer.Add(self.nRulesTxt)
         self.find_rules_sizer.Add((5, 20))
         self.find_rules_sizer.Add(self.trainClassifierBtn)
+        # Cross Validation Button
         self.checkProgressBtn = wx.Button(self.find_rules_panel, -1, 'Check Progress')
         self.checkProgressBtn.Disable()
         self.find_rules_sizer.Add((5, 20))
         self.find_rules_sizer.Add(self.checkProgressBtn)
         self.Bind(wx.EVT_BUTTON, self.OnCheckProgress, self.checkProgressBtn)
+        # Plot nice graphics Button
+        self.plotBtn = wx.Button(self.find_rules_panel, -1, 'Plot Embedding')
+        self.plotBtn.Disable()
+        self.find_rules_sizer.Add((5, 20))
+        self.find_rules_sizer.Add(self.plotBtn)
+        self.Bind(wx.EVT_BUTTON, self.OnPlotResults, self.plotBtn)
+
         self.find_rules_sizer.Add((5, 20))
         self.find_rules_sizer.Add(self.scoreAllBtn)
         self.find_rules_sizer.Add((5, 20))
@@ -232,13 +245,35 @@ class Classifier(wx.Frame):
         # JEN - End Add
         self.fetchSizer.Hide(self.fetchFromGroupSizer)
 
+        
+
+        if scikits_loaded:
+            # Define Classifiers
+            AdaBoostClassifier = GeneralClassifier("ensemble.AdaBoostClassifier()", self)
+            SupportVectorMachines = GeneralClassifier("svm.LinearSVC()", self)
+            RandomForestClassifier = GeneralClassifier("ensemble.RandomForestClassifier(n_estimators=200)", self)
+            FastGentleBoostingClassifier = FastGentleBoosting(self)
+
         # JK - Start Add
-        # Define the classification algorithms and set the default
-        self.algorithm = GeneralClassifier()
-        self.complexityTxt.SetLabel(str(self.algorithm.get_params()))
+        # Define the Random Forest classification algorithm to be default and set the default
+        self.algorithm = RandomForestClassifier
+        self.algorithm.name = "RandomForest"
+        # self.complexityTxt.SetLabel(str(self.algorithm.ComplexityTxt()))
+
+        # helps translating the checked item for loadModel
+        self.classifier2ItemId = {
+            'randomforest' : 1,
+            'adaboost' : 2,
+            'supportvectormachines' : 3,
+            'fastgentleboosting' : 4,
+        }
+
         self.algorithms = {
+            'randomforest': RandomForestClassifier,
+            # TODO adapt if scikit loaded inside object
             'adaboost': AdaBoostClassifier,
-            'supportvectormachines': SupportVectorMachines
+            'supportvectormachines': SupportVectorMachines,
+            'fastgentleboosting': FastGentleBoostingClassifier
         }
         # JK - End Add
 
@@ -305,14 +340,17 @@ class Classifier(wx.Frame):
     def AlgorithmSelect(self, event):
         selectedItem = re.sub('[\W_]+', '', self.classifierMenu.FindItemById(event.GetId()).GetText())
         try:
-            self.algorithm = self.algorithms[selectedItem.lower()](self)
+            self.algorithm = self.algorithms[selectedItem.lower()]
+            # Save the name
+            self.algorithm.name = selectedItem
+            logging.info("Algorithm " + selectedItem + " succesfully loaded")
         except:
             # Fall back to default algorithm
             logging.error('Could not load specified algorithm, falling back to default.')
             self.algorithm = GeneralClassifier()
 
         # Update the GUI complexity text and classifier description
-        self.complexityTxt.SetLabel(self.algorithm.get_params())
+        # self.complexityTxt.SetLabel(self.algorithm.get_params())
         self.complexityTxt.Parent.Layout()
         self.rules_text.Value = ''
 
@@ -391,9 +429,9 @@ class Classifier(wx.Frame):
                                                    help='Save your training set to file so you can reload these classified cells again.')
         self.fileMenu.AppendSeparator()
         # JEN - Start Add
-        ##        self.loadModelMenuItem = self.fileMenu.Append(-1, text='Load classifier model\tCtrl+Shift+O', help='Loads a classifier model specified in a text file')
-        ##        self.saveModelMenuItem = self.fileMenu.Append(-1, text='Save classifier model\tCtrl+Shift+S', help='Save your classifier model to file so you can use it again on this or other experiments.')
-        ##        self.fileMenu.AppendSeparator()
+        self.loadModelMenuItem = self.fileMenu.Append(-1, text='Load classifier model\tCtrl+Shift+O', help='Loads a classifier model specified in a text file')
+        self.saveModelMenuItem = self.fileMenu.Append(-1, text='Save classifier model\tCtrl+Shift+S', help='Save your classifier model to file so you can use it again on this or other experiments.')
+        self.fileMenu.AppendSeparator()
         # JEN - End Add
         self.exitMenuItem = self.fileMenu.Append(id=wx.ID_EXIT, text='Exit\tCtrl+Q', help='Exit classifier')
         self.GetMenuBar().Append(self.fileMenu, 'File')
@@ -412,26 +450,30 @@ class Classifier(wx.Frame):
         # Channel Menus
         self.CreateChannelMenus()
 
-        # JK - Start Add
         # Classifier Type chooser
-        ##        self.classifierMenu = wx.Menu();
-        ##        fgbMenuItem = self.classifierMenu.AppendRadioItem(-1, text='Fast Gentle Boosting', help='Uses the Fast Gentle Boosting algorithm to find classifier rules.')
-        ##        if scikits_loaded:
-        ##            svmMenuItem = self.classifierMenu.AppendRadioItem(-1, text='Support Vector Machines', help='User Support Vector Machines to find classifier rules.')
-        ##        self.GetMenuBar().Append(self.classifierMenu, 'Classifier')
-        # JK - End Add
+        self.classifierMenu = wx.Menu();
+        if scikits_loaded:
+            rfMenuItem = self.classifierMenu.AppendRadioItem(1, text='Random Forest', help='Uses Random Forest to classify')
+            adaMenuItem = self.classifierMenu.AppendRadioItem(2, text='Ada Boost', help='Uses Ada Boost to classify.')
+            svmMenuItem = self.classifierMenu.AppendRadioItem(3, text='Support Vector Machines', help='User Support Vector Machines to classify.')
+        fgbMenuItem = self.classifierMenu.AppendRadioItem(4, text='Fast Gentle Boosting', help='Uses the Fast Gentle Boosting algorithm to find classifier rules.')
+        self.GetMenuBar().Append(self.classifierMenu, 'Classifier')
 
         # Bind events to different menu items
         self.Bind(wx.EVT_MENU, self.OnLoadTrainingSet, self.loadTSMenuItem)
         self.Bind(wx.EVT_MENU, self.OnSaveTrainingSet, self.saveTSMenuItem)
-        ##        self.Bind(wx.EVT_MENU, self.OnLoadModel, self.loadModelMenuItem) # JEN - Added
-        ##        self.Bind(wx.EVT_MENU, self.SaveModel, self.saveModelMenuItem) # JEN - Added
+        self.Bind(wx.EVT_MENU, self.OnLoadModel, self.loadModelMenuItem) # JEN - Added
+        self.Bind(wx.EVT_MENU, self.SaveModel, self.saveModelMenuItem) # JEN - Added
         self.Bind(wx.EVT_MENU, self.OnShowImageControls, imageControlsMenuItem)
         self.Bind(wx.EVT_MENU, self.OnRulesEdit, rulesEditMenuItem)
 
-    ##        self.Bind(wx.EVT_MENU, self.AlgorithmSelect, fgbMenuItem) # JK - Added
-    ##        if scikits_loaded:
-    ##            self.Bind(wx.EVT_MENU, self.AlgorithmSelect, svmMenuItem) # JK - Added
+        # Bind events for algorithms
+        if scikits_loaded:
+            self.Bind(wx.EVT_MENU, self.AlgorithmSelect, adaMenuItem)  
+            self.Bind(wx.EVT_MENU, self.AlgorithmSelect, svmMenuItem) 
+            self.Bind(wx.EVT_MENU, self.AlgorithmSelect, rfMenuItem)
+        self.Bind(wx.EVT_MENU, self.AlgorithmSelect, fgbMenuItem) 
+
 
     def CreateChannelMenus(self):
         ''' Create color-selection menus for each channel. '''
@@ -685,15 +727,18 @@ class Classifier(wx.Frame):
         self.trainClassifierBtn.Enable()
         if hasattr(self, 'checkProgressBtn'):
             self.checkProgressBtn.Enable()
+            self.plotBtn.Enable() # added DD
         if len(self.classBins) <= 1:
             self.trainClassifierBtn.Disable()
             if hasattr(self, 'checkProgressBtn'):
                 self.checkProgressBtn.Disable()
+                self.plotBtn.Disable() # added DD
         for bin in self.classBins:
             if bin.empty:
                 self.trainClassifierBtn.Disable()
                 if hasattr(self, 'checkProgressBtn'):
                     self.checkProgressBtn.Disable()
+                    self.plotBtn.Disable() # added DD
 
     def OnFetch(self, evt):
         # Parse out the GUI input values
@@ -801,7 +846,10 @@ class Classifier(wx.Frame):
                                                               ['%s=%s' % (n, v) for n, v in zip(colNames, groupKey)]))
 
                 self.PostMessage('Classifying %s.' % (p.object_name[1]))
+
                 obKeys += self.algorithm.FilterObjectsFromClassN(obClass, obKeysToTry)
+
+
                 attempts += len(obKeysToTry)
                 total_attempts += len(obKeysToTry)
                 if attempts >= MAX_ATTEMPTS:
@@ -845,16 +893,45 @@ class Classifier(wx.Frame):
         # wx.FD_CHANGE_DIR doesn't seem to work in the FileDialog, so I do it explicitly
         os.chdir(os.path.split(filename)[0])
         self.defaultModelFileName = os.path.split(filename)[1]
-        self.RemoveAllSortClasses(False)
-        try:
+        # self.RemoveAllSortClasses(False) # Don't remove sorted classes
+        if True:
+
+            # Save old name for checking
+            tmp_name = self.algorithm.name
+
+            # Now algorithm.name is different! Don't move it before tmp_name
             self.algorithm.LoadModel(filename)
-            for label in self.algorithm.bin_labels:
-                self.AddSortClass(label)
+            # Save to select for later
+            select = self.algorithm.name
+
+            if self.algorithm.name != tmp_name:
+                logging.info("Detected different setted classifier: " + tmp_name + ", switching to " + self.algorithm.name)
+                # Restore the name
+                self.algorithm.name = tmp_name
+                self.algorithm = self.algorithms[select.lower()]
+                # Load again
+                self.algorithm.LoadModel(filename)
+
+            itemId = self.classifier2ItemId[select.lower()]
+            # Checks the MenuItem
+            self.classifierMenu.Check(itemId, True)
+
+            # for label in self.algorithm.bin_labels:
+            #     self.AddSortClass(label)
             for bin in self.classBins:
-                bin.trained = True
+                 bin.trained = True
             self.scoreAllBtn.Enable()
             self.scoreImageBtn.Enable()
             self.PostMessage('Classifier model succesfully loaded')
+
+            # Some User Information about the loaded Algorithm
+            self.PostMessage('Loaded trained classifier: ' + self.algorithm.name + ' on classes:')
+            for label in self.algorithm.bin_labels:
+                self.PostMessage(label)
+            self.PostMessage('CAUTION: Classifier needs to be trained on the current data set!')
+
+        try:
+            pass 
         except:
             self.scoreAllBtn.Disable()
             self.scoreImageBtn.Disable()
@@ -862,13 +939,14 @@ class Classifier(wx.Frame):
             self.PostMessage('Error loading classifier model')
         finally:
             self.UpdateClassChoices()
-            self.rules_text.Value = self.algorithm.ShowModel()
             self.keysAndCounts = None
+
+
 
     def SaveModel(self, evt=None):
         if not self.defaultModelFileName:
             self.defaultModelFileName = 'my_model.model'
-        if not self.algorithm.model:
+        if not self.algorithm.classifier:
             logging.error('No classifier model has been created. Please create one before saving')
             return
 
@@ -907,7 +985,7 @@ class Classifier(wx.Frame):
             # wx.FD_CHANGE_DIR doesn't seem to work in the FileDialog, so I do it explicitly
             self.defaultTSFileName = os.path.basename(filename)
 
-            self.trainingSet = TrainingSet(p, filename, labels_only=True)
+            self.trainingSet = TrainingSet(p, filename, labels_only=False)
 
             self.RemoveAllSortClasses()
             for label in self.trainingSet.labels:
@@ -922,6 +1000,7 @@ class Classifier(wx.Frame):
                     bin.AddObjects(keysPerBin[bin.label], self.chMap, priority=2)
 
             self.PostMessage('Training set loaded.')
+            self.GetNumberOfClasses() # Logs number of classes
 
     def OnSaveTrainingSet(self, evt):
         self.SaveTrainingSet()
@@ -987,6 +1066,10 @@ class Classifier(wx.Frame):
     def OnCheckProgress(self, evt):
         self.algorithm.CheckProgress()
 
+    # Added by DD
+    def OnPlotResults(self, evt):
+        self.PlotResults()
+
     def UpdateTrainingSet(self):
         # pause tile loading
         with tilecollection.load_lock():
@@ -1045,16 +1128,27 @@ class Classifier(wx.Frame):
                 output = StringIO()
                 dlg = wx.ProgressDialog('Training classifier...', '0% Complete', 100, self,
                                         wx.PD_ELAPSED_TIME | wx.PD_ESTIMATED_TIME | wx.PD_REMAINING_TIME | wx.PD_CAN_ABORT)
+                
                 # JK - Start Modification
                 # Train the desired algorithm
-                self.algorithm.Train(self.trainingSet.label_matrix,
-                    self.trainingSet.values, output
-                )
+                # Legacy Code
+                if self.algorithm.name == "FastGentleBoosting":
+                    self.algorithm.Train(
+                        self.trainingSet.colnames, nRules, self.trainingSet.label_matrix,
+                        self.trainingSet.values, output, cb
+                    )
+                else:
+                    # Convert labels
+                    logging.info(self.trainingSet.values)
+                    self.algorithm.Train(self.trainingSet.label_matrix, self.trainingSet.values, output)
+
                 # JK - End Modification
 
                 self.PostMessage('Classifier trained in %.1fs.' % (time() - t1))
                 dlg.Destroy()
-                self.rules_text.Value = self.algorithm.ShowModel()
+                # Hack
+                if (self.algorithm.name == "FastGentleBoosting"):
+                    self.rules_text.Value = self.algorithm.ShowModel()
                 self.scoreAllBtn.Enable()
                 self.scoreImageBtn.Enable()
             except StopCalculating:
@@ -1184,7 +1278,12 @@ class Classifier(wx.Frame):
                     raise StopCalculating()
 
             try:
-                self.keysAndCounts = self.algorithm.PerImageCounts(filter_name=filter, cb=update)
+                # Adapter Pattern to switch between Legacy code and SciKit Learn
+                if self.algorithm.name == "FastGentleBoosting":
+                    self.keysAndCounts = self.algorithm.PerImageCounts(filter_name=filter, cb=update)
+                else:
+                    number_of_classes = self.GetNumberOfClasses()
+                    self.keysAndCounts = self.algorithm.PerImageCounts(number_of_classes, filter, update)
             except StopCalculating:
                 dlg.Destroy()
                 self.SetStatusText('Scoring canceled.')
@@ -1567,6 +1666,57 @@ class Classifier(wx.Frame):
         #      it needs to be trashed if Classifier is to be reopened since it
         #      will otherwise grab the existing instance with a dead tileLoader
         tilecollection.TileCollection._forgetClassInstanceReferenceForTesting()
+
+    # Get number of labels/classes we have in our training set
+    def GetNumberOfClasses(self):
+        number_of_classes = len(self.trainingSet.labels)
+        # logging.info("We have " + str(number_of_classes) + " Classes")
+        return number_of_classes
+
+    # Random Forest Embedding of the Training Data
+    def PlotResults(self):
+        import matplotlib.pyplot as plt
+        from matplotlib import offsetbox
+        from sklearn import (manifold, datasets, decomposition, ensemble, lda,
+                     random_projection)
+
+        labels = self.algorithm.label2np(self.trainingSet.label_matrix)
+        classes = self.GetNumberOfClasses()
+        # Function to plot embedding
+        def plot_embedding(X, title=None):
+            x_min, x_max = np.min(X, 0), np.max(X, 0)
+            X = (X - x_min) / (x_max - x_min)
+
+            plt.figure()
+            ax = plt.subplot(111)
+            for i in range(X.shape[0]):
+                plt.text(X[i, 0], X[i, 1], str(labels[i]),
+                color=plt.cm.Set1(labels[i] / float(classes)),
+                fontdict={'weight': 'bold', 'size': 9})
+
+
+
+            plt.xticks([]), plt.yticks([])
+            if title is not None:
+                plt.title(title)
+
+            plt.show()
+
+        # t-SNE embedding of the digits dataset
+        hasher = ensemble.RandomTreesEmbedding(n_estimators=200, random_state=0,
+                                       max_depth=5)
+
+        X = self.trainingSet.values
+        t0 = time()
+        X_transformed = hasher.fit_transform(X)
+        pca = decomposition.TruncatedSVD(n_components=2)
+        t0 = time()
+        X_reduced = pca.fit_transform(X_transformed)
+
+        plot_embedding(X_reduced,
+                       "Random Forest Embedding of Training Set (time %.2fs)" %
+                       (time() - t0))
+        
 
 
 class StopCalculating(Exception):

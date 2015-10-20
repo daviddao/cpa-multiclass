@@ -12,33 +12,52 @@ from sklearn import cross_validation
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn import metrics
 import cPickle, json
+from sklearn.externals import joblib
+
+'''
+TODO missing functions for class algorithm
+Show model
+GetComplxTxt <- Get params
+'''
 
 class GeneralClassifier(BaseEstimator, ClassifierMixin):
-    def __init__(self, classifier = lda.LDA()):
-        logging.info('Initialized New Classifier')
+    def __init__(self, classifier = "lda.LDA()", env=None):
+        logging.info('Initialized New Classifier: ' + classifier)
+        self.name = "" # Name for User Information
         self.classBins = []
-        self.classifier = classifier
+        self.classifier = eval(classifier)
         self.trained = False
+        self.env = env # Env is Classifier in Legacy Code -- maybe renaming ?
+
+
+
+    # A converter function for labels
+    def label2np(self, labels):
+        ## Parsing original label_matrix into numpy format 
+        ## Original [-1 1] -> [0 1] (take only second?)
+        return np.nonzero(labels + 1)[1] + 1
+
 
     def CheckProgress(self):
-        import wx
-        ''' Called when the CheckProgress Button is pressed. '''
+        #import wx
+        ''' Called when the Cross Validation Button is pressed. '''
         # get wells if available, otherwise use imagenumbers
-        try:
-            nRules = int(self.classifier.nRulesTxt.GetValue())
-        except:
-            logging.error('Unable to parse number of rules')
-            return
 
-        if not self.classifier.UpdateTrainingSet():
+        db = dbconnect.DBConnect.getInstance()
+        groups = [db.get_platewell_for_object(key) for key in self.env.trainingSet.get_object_keys()]
+
+        if not self.env.UpdateTrainingSet():
             self.PostMessage('Cross-validation canceled.')
             return
 
-        db = dbconnect.DBConnect.getInstance()
-        groups = [db.get_platewell_for_object(key) for key in self.classifier.trainingSet.get_object_keys()]
-
-        t1 = time()
-        dlg = wx.ProgressDialog('Nothing', '0% Complete', 100, self.classifier, wx.PD_ELAPSED_TIME | wx.PD_ESTIMATED_TIME | wx.PD_REMAINING_TIME | wx.PD_CAN_ABORT)
+        #t1 = time()
+        #dlg = wx.ProgressDialog('Nothing', '0% Complete', 100, self.classifier, wx.PD_ELAPSED_TIME | wx.PD_ESTIMATED_TIME | wx.PD_REMAINING_TIME | wx.PD_CAN_ABORT)
+        labels = self.env.trainingSet.label_matrix
+        values = self.env.trainingSet.values
+        classificationReport = self.ClassificationReport(labels, self.XValidatePredict(labels, values, folds=5, stratified=True))
+        print classificationReport
+        self.plot_classification_report(classificationReport)
+        
 
     def ClassificationReport(self, true_labels, predicted_labels, confusion_matrix=False):
         #metrics.confusion_matrix(true_labels, predicted_labels)
@@ -52,11 +71,16 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
         #    scorePerClass[label_count] = 1.0*sum(predicted_correct)/sum(indices)
 
         #print scorePerClass.mean()
+        true_labels = self.label2np(true_labels)
         return metrics.classification_report(true_labels, predicted_labels)
 
     def ClearModel(self):
         self.classBins = []
         self.trained = False
+
+    # Adapter to SciKit Learn
+    def ComplexityTxt():
+        return str(self.get_params())
 
     def CreatePerObjectClassTable(self, classNames):
         multiclasssql.create_perobject_class_table(self, classNames)
@@ -70,16 +94,16 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
     def LoadModel(self, model_filename):
 
         try:
-            with open(model_filename, 'r') as infile:
-                self.model, self.bin_labels = cPickle.load(infile)
+            self.classifier, self.bin_labels, self.name = joblib.load(model_filename)
         except:
-            self.model = None
+            self.classifier = None
             self.bin_labels = None
-            logging.error('The loaded model was not a fast gentle boosting model')
+            logging.error('Model not correctly loaded')
             raise TypeError
 
 
     def LOOCV(self, labels, values, details=False):
+        labels = self.label2np(labels);
         '''
         Performs leave one out cross validation.
         Takes a subset of the input data label_array and values to do the cross validation.
@@ -90,7 +114,7 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
         scores = np.zeros(num_samples)
         detailedResults = np.zeros(num_samples)
         # get training and testing set, train on training set, score on test set
-        for train, test in cross_validation.LeaveOneOut(n=num_samples):
+        for train, test in cross_validation.LeaveOneOut(num_samples):
             values_test = values[test]
             label_test = labels[test]
             self.Train(labels[train], values[train], fout=None)
@@ -101,8 +125,8 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
             return scores, detailedResults
         return scores
 
-    def PerImageCounts(self, filter_name=None, cb=None):
-        return multiclasssql.PerImageCounts(self, filter_name=filter_name, cb=cb)
+    def PerImageCounts(self, number_of_classes, filter_name=None, cb=None):
+        return multiclasssql.PerImageCounts(self, number_of_classes, filter_name, cb)
 
     def Predict(self, test_values, fout=None):
         '''RETURNS: np array of predicted classes of input data test_values '''
@@ -112,8 +136,7 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
         return np.array(predictions)
 
     def SaveModel(self, model_filename, bin_labels):
-        with open(model_filename, 'w') as outfile:
-            cPickle.dump((self.model, bin_labels), outfile)
+        joblib.dump((self.classifier, bin_labels, self.name), model_filename, compress=9)
 
     def ShowModel(self):#SKLEARN TODO
         '''
@@ -123,11 +146,15 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
 
     def Train(self, labels, values, fout=None):
         '''Trains classifier using values and label_array '''
+
+        labels = self.label2np(labels)
+
         self.classifier.fit(values, labels)
         self.trained = True
+
         if fout:
             print self.classifier
-
+        
     def UpdateBins(self, classBins):
         self.classBins = classBins
 
@@ -153,6 +180,10 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
         Takes a subset of the input data label_array and values to do the cross validation.
         RETURNS: array of length folds of cross validation scores
         '''
+
+        labels = self.label2np(labels)
+
+
         num_samples = values.shape[0]
         if stratified:
             CV = folds
@@ -170,6 +201,10 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
         :param folds: number of folds
         :return: score for each fold
         '''
+
+        labels = self.label2np(labels)
+
+
         n_samples = values.shape[0]
         unique_labels, indices = np.unique(labels, return_inverse=True)
         label_counts = np.bincount(indices) #count of each class
@@ -198,6 +233,9 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
         :param stratified: boolean whether to use stratified K fold
         :return: cross-validated estimates for each input data point
         '''
+
+        labels = self.label2np(labels)
+
         num_samples = values.shape[0]
         if stratified:
             CV = folds
@@ -206,6 +244,43 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
 
         predictions = cross_validation.cross_val_predict(self.classifier, X=values, y=labels, cv=CV, n_jobs=1)
         return np.array(predictions)
+
+    # Plots the classification report for the user
+    def plot_classification_report(self, cr, title='Classification report ', with_avg_total=False, cmap=plt.cm.Greys):
+
+        lines = cr.split('\n')
+
+        classes = []
+        plotMat = []
+        for line in lines[2 : (len(lines) - 3)]:
+            #print(line)
+            t = line.split()
+            # print(t)
+            label = self.env.trainingSet.labels[int(t[0]) - 1]
+            classes.append(label)
+            v = [float(x) for x in t[1: len(t) - 1]]
+            plotMat.append(v)
+
+        if with_avg_total:
+            aveTotal = lines[len(lines) - 1].split()
+            classes.append('avg/total')
+            vAveTotal = [float(x) for x in t[1:len(aveTotal) - 1]]
+            plotMat.append(vAveTotal)
+
+
+        plt.imshow(plotMat, interpolation='nearest', cmap=cmap)
+        plt.title(title)
+        plt.colorbar()
+        x_tick_marks = np.arange(3)
+        y_tick_marks = np.arange(len(classes))
+        plt.xticks(x_tick_marks, ['precision', 'recall', 'f1-score'], rotation=45)
+        plt.yticks(y_tick_marks, classes)
+        plt.tight_layout()
+        plt.ylabel('Classes')
+        plt.xlabel('Measures')
+        plt.show()
+
+
 
 
 if __name__ == '__main__':
