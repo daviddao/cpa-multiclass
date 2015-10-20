@@ -33,7 +33,7 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
 
     # A converter function for labels
     def label2np(self, labels):
-        ## Parsing original label_matrix into numpy format 
+        ## Parsing original label_matrix into numpy format
         ## Original [-1 1] -> [0 1] (take only second?)
         return np.nonzero(labels + 1)[1] + 1
 
@@ -57,7 +57,7 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
         classificationReport = self.ClassificationReport(labels, self.XValidatePredict(labels, values, folds=5, stratified=True))
         print classificationReport
         self.plot_classification_report(classificationReport)
-        
+
 
     def ClassificationReport(self, true_labels, predicted_labels, confusion_matrix=False):
         #metrics.confusion_matrix(true_labels, predicted_labels)
@@ -79,8 +79,8 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
         self.trained = False
 
     # Adapter to SciKit Learn
-    def ComplexityTxt():
-        return str(self.get_params())
+    def ComplexityTxt(self):
+        return '# top features'
 
     def CreatePerObjectClassTable(self, classNames):
         multiclasssql.create_perobject_class_table(self, classNames)
@@ -140,9 +140,18 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
 
     def ShowModel(self):#SKLEARN TODO
         '''
-        Transforms the weak learners of the algorithm into a human readable
-        representation
+        Returns a string describing the most important features of the trained classifier
         '''
+        if self.trained:
+            try:
+                colnames = self.env.trainingSet.colnames
+                importances = self.classifier.feature_importances_
+                indices = np.argsort(importances)[::-1]
+                return "\n".join([str(colnames[indices[f]]) for f in range(self.env.nRules)])
+            except:
+                return 'Nothing to show'
+        else:
+            return ''
 
     def Train(self, labels, values, fout=None):
         '''Trains classifier using values and label_array '''
@@ -154,7 +163,7 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
 
         if fout:
             print self.classifier
-        
+
     def UpdateBins(self, classBins):
         self.classBins = classBins
 
