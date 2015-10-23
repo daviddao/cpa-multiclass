@@ -87,6 +87,7 @@ import inspect
 from cpa.icons import get_cpa_icon
 import cpa.dbconnect
 import cpa.multiclasssql
+
 # ---
 import wx
 
