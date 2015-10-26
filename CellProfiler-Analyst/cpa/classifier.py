@@ -936,6 +936,8 @@ class Classifier(wx.Frame):
         except:
             self.scoreAllBtn.Disable()
             self.scoreImageBtn.Disable()
+            self.openDimensReduxBtn.Disable()
+
             logging.error('Error loading classifier model')
             self.PostMessage('Error loading classifier model')
         finally:
@@ -1152,6 +1154,7 @@ class Classifier(wx.Frame):
                 self.rules_text.Value = self.algorithm.ShowModel()
                 self.scoreAllBtn.Enable()
                 self.scoreImageBtn.Enable()
+
             except StopCalculating:
                 self.PostMessage('User canceled training.')
                 return
