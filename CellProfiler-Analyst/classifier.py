@@ -6,35 +6,35 @@ scikits_loaded = True
 
 import matplotlib
 matplotlib.use('WXAgg')
-import tableviewer
-from datamodel import DataModel
-from imagecontrolpanel import ImageControlPanel
-from properties import Properties
-from scoredialog import ScoreDialog
-import tilecollection
-from trainingset import TrainingSet
+import cpa.tableviewer as tableviewer
+from cpa.datamodel import DataModel
+from cpa.imagecontrolpanel import ImageControlPanel
+from cpa.properties import Properties
+from cpa.scoredialog import ScoreDialog
+import cpa.tilecollection as tilecollection
+from cpa.trainingset import TrainingSet
 from cStringIO import StringIO
 from time import time
-import icons
-import dbconnect
-import dirichletintegrate
-import imagetools
-import polyafit
-import sortbin
+import cpa.icons as icons
+import cpa.dbconnect as dbconnect
+import cpa.dirichletintegrate as dirichletintegrate
+import cpa.imagetools as imagetools
+import cpa.polyafit as polyafit
+import cpa.sortbin as sortbin
 import logging
 import numpy as np
 import os
 import wx
 import re
 import cpa.helpmenu
-from dimensredux import PlotMain
+from cpa.dimensredux import PlotMain
 
-import fastgentleboostingmulticlass
-from fastgentleboosting import FastGentleBoosting
+import cpa.fastgentleboostingmulticlass as fastgentleboostingmulticlass
+from cpa.fastgentleboosting import FastGentleBoosting
 
 if scikits_loaded:
     #from supportvectormachines import SupportVectorMachines
-    from generalclassifier import GeneralClassifier
+    from cpa.generalclassifier import GeneralClassifier
 
 # number of cells to classify before prompting the user for whether to continue
 MAX_ATTEMPTS = 10000
@@ -44,58 +44,6 @@ CREATE_NEW_FILTER = '*create new filter*'
 
 required_fields = ['object_table', 'object_id', 'cell_x_loc', 'cell_y_loc']
 
-
-
-class ChangeDepthDialog(wx.Dialog):
-    
-    def __init__(self, classifier, *args, **kw):
-        super(ChangeDepthDialog, self).__init__(*args, **kw) 
-            
-        self.InitUI()
-        self.SetSize((250, 200))
-        self.SetTitle("Inspect Model")
-        self.env = classifier #Env for Environment it is in
-        
-        
-    def InitUI(self):
-
-        pnl = wx.Panel(self)
-        vbox = wx.BoxSizer(wx.VERTICAL)
-
-        sb = wx.StaticBox(pnl, label='Colors')
-        sbs = wx.StaticBoxSizer(sb, orient=wx.VERTICAL)        
-        sbs.Add(wx.RadioButton(pnl, label='256 Colors', 
-            style=wx.RB_GROUP))
-        sbs.Add(wx.RadioButton(pnl, label='16 Colors'))
-        sbs.Add(wx.RadioButton(pnl, label='2 Colors'))
-        
-        hbox1 = wx.BoxSizer(wx.HORIZONTAL)        
-        hbox1.Add(wx.RadioButton(pnl, label='Custom'))
-        hbox1.Add(wx.TextCtrl(pnl), flag=wx.LEFT, border=5)
-        sbs.Add(hbox1)
-        
-        pnl.SetSizer(sbs)
-       
-        hbox2 = wx.BoxSizer(wx.HORIZONTAL)
-        okButton = wx.Button(self, label='Ok')
-        closeButton = wx.Button(self, label='Close')
-        hbox2.Add(okButton)
-        hbox2.Add(closeButton, flag=wx.LEFT, border=5)
-
-        vbox.Add(pnl, proportion=1, 
-            flag=wx.ALL|wx.EXPAND, border=5)
-        vbox.Add(hbox2, 
-            flag=wx.ALIGN_CENTER|wx.TOP|wx.BOTTOM, border=10)
-
-        self.SetSizer(vbox)
-        
-        okButton.Bind(wx.EVT_BUTTON, self.OnClose)
-        closeButton.Bind(wx.EVT_BUTTON, self.OnClose)
-        
-        
-    def OnClose(self, e):
-        
-        self.Destroy()
 
 class Classifier(wx.Frame):
     """
@@ -239,7 +187,7 @@ class Classifier(wx.Frame):
         self.find_rules_sizer.Add((5, 20))
         self.find_rules_sizer.Add(self.trainClassifierBtn)
         # Cross Validation Button
-        self.checkProgressBtn = wx.Button(self.find_rules_panel, -1, 'Model Validation')
+        self.checkProgressBtn = wx.Button(self.find_rules_panel, -1, 'Check Progress')
         self.checkProgressBtn.Disable()
         self.find_rules_sizer.Add((5, 20))
         self.find_rules_sizer.Add(self.checkProgressBtn)
@@ -250,13 +198,6 @@ class Classifier(wx.Frame):
         self.find_rules_sizer.Add((5, 20))
         self.find_rules_sizer.Add(self.plotBtn)
         self.Bind(wx.EVT_BUTTON, self.OnPlotResults, self.plotBtn)
-        # Inspector button
-        self.inspectBtn = wx.Button(self.find_rules_panel, -1, 'Inspect Data')
-        self.inspectBtn.Disable()
-        self.find_rules_sizer.Add((5, 20))
-        self.find_rules_sizer.Add(self.inspectBtn)
-        self.Bind(wx.EVT_BUTTON, self.OnInspect, self.inspectBtn)
-
 
         self.find_rules_sizer.Add((5, 20))
         self.find_rules_sizer.Add(self.scoreAllBtn)
@@ -354,7 +295,6 @@ class Classifier(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.OnFindRules, self.trainClassifierBtn)
         self.Bind(wx.EVT_BUTTON, self.ScoreAll, self.scoreAllBtn)
         self.Bind(wx.EVT_BUTTON, self.OnScoreImage, self.scoreImageBtn)
-        self.Bind(wx.EVT_BUTTON, self.OnInspect, self.inspectBtn)
         # JEN - Start Add
         self.Bind(wx.EVT_BUTTON, self.OpenDimensRedux, self.openDimensReduxBtn)
         # JEN - End Add
@@ -381,13 +321,6 @@ class Classifier(wx.Frame):
             response = dlg.ShowModal()
             if response == wx.ID_YES:
                 self.LoadTrainingSet(p.training_set)
-
-    # DD - Inspector Visualisation
-    def OnInspect(self, event):
-        chgdep = ChangeDepthDialog(None, self,
-            title='Inspect Model')
-        chgdep.ShowModal()
-        chgdep.Destroy()  
 
     # JEN - Start Add
     def OpenDimensRedux(self, event):
@@ -796,20 +729,17 @@ class Classifier(wx.Frame):
         if hasattr(self, 'checkProgressBtn'):
             self.checkProgressBtn.Enable()
             self.plotBtn.Enable() # added DD
-            self.inspectBtn.Enable() # added DD
         if len(self.classBins) <= 1:
             self.trainClassifierBtn.Disable()
             if hasattr(self, 'checkProgressBtn'):
                 self.checkProgressBtn.Disable()
                 self.plotBtn.Disable() # added DD
-                self.inspectBtn.Enable() # added DD
         for bin in self.classBins:
             if bin.empty:
                 self.trainClassifierBtn.Disable()
                 if hasattr(self, 'checkProgressBtn'):
                     self.checkProgressBtn.Disable()
                     self.plotBtn.Disable() # added DD
-                    self.inspectBtn.Enable() # added DD
 
     def OnFetch(self, evt):
         # Parse out the GUI input values
@@ -1213,7 +1143,7 @@ class Classifier(wx.Frame):
                 else:
                     # Convert labels
                     logging.info(self.trainingSet.values)
-                    self.algorithm.Train(self.trainingSet.label_array, self.trainingSet.values, output)
+                    self.algorithm.Train(self.trainingSet.label_matrix, self.trainingSet.values, output)
                     self.nRules = nRules # Hack
 
                 # JK - End Modification
@@ -1754,9 +1684,7 @@ class Classifier(wx.Frame):
         from sklearn import (manifold, datasets, decomposition, ensemble, lda,
                      random_projection)
 
-        
-
-        labels = self.trainingSet.label_array
+        labels = self.algorithm.label2np(self.trainingSet.label_matrix)
         classes = self.GetNumberOfClasses()
         # Function to plot embedding
         def plot_embedding(X, title=None):
@@ -1782,11 +1710,7 @@ class Classifier(wx.Frame):
         hasher = ensemble.RandomTreesEmbedding(n_estimators=200, random_state=0,
                                        max_depth=5)
 
-        # Normalize the values
-        X = self.trainingSet.normalize()
-
-        # normalise the values
-
+        X = self.trainingSet.values
         t0 = time()
         X_transformed = hasher.fit_transform(X)
         pca = decomposition.TruncatedSVD(n_components=2)
