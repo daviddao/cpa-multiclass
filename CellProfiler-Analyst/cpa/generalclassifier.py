@@ -13,6 +13,9 @@ from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn import metrics
 import cPickle, json
 from sklearn.externals import joblib
+import seaborn as sns
+sns.set(style="whitegrid", palette="pastel", color_codes=True)
+
 
 '''
 TODO missing functions for class algorithm
@@ -43,7 +46,7 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
 
         #t1 = time()
         #dlg = wx.ProgressDialog('Nothing', '0% Complete', 100, self.classifier, wx.PD_ELAPSED_TIME | wx.PD_ESTIMATED_TIME | wx.PD_REMAINING_TIME | wx.PD_CAN_ABORT)
-        labels = self.env.trainingSet.label_matrix
+        labels = self.env.trainingSet.label_array
         values = self.env.trainingSet.values
         classificationReport = self.ClassificationReport(labels, self.XValidatePredict(labels, values, folds=5, stratified=True))
         print classificationReport
@@ -62,7 +65,6 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
         #    scorePerClass[label_count] = 1.0*sum(predicted_correct)/sum(indices)
 
         #print scorePerClass.mean()
-        true_labels = self.label2np(true_labels)
         return metrics.classification_report(true_labels, predicted_labels)
 
     def ClearModel(self):
@@ -94,7 +96,6 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
 
 
     def LOOCV(self, labels, values, details=False):
-        labels = self.label2np(labels);
         '''
         Performs leave one out cross validation.
         Takes a subset of the input data label_array and values to do the cross validation.
