@@ -81,7 +81,8 @@ db_passwd  =  <your_password>
 	#object_csv_file  =  </path/to/per_object.csv>
 
 
-# ======== Database Tables ======== 
+# ======== Database Tables ========
+# object_table (OPTIONAL)
 image_table   =  <your_per_image_table_name>
 object_table  =  <your_per_object_table_name>
 
@@ -95,7 +96,7 @@ object_table  =  <your_per_object_table_name>
 #          per-image and per-object tables.
 # image_id: must be a foreign key column between your per-image and per-object
 #           tables
-# object_id: the object key column from your per-object table
+# object_id (OPTIONAL): the object key column from your per-object table
 
 table_id    =  <your_table_number_key_column>
 image_id    =  <your_image_number_key_column>
@@ -103,8 +104,8 @@ object_id   =  <your_object_number_key_column>
 plate_id    =  <your_plate_id_column>
 well_id     =  <your_well_id_column>
 
-# Also specify the column names that contain X and Y coordinates for each 
-# object within an image.
+# If object_id is defined (otherwise OPTIONAL), specify the column names that
+# contain X and Y coordinates for each object within an image.
 
 cell_x_loc  =  <your_object_x_location_column>
 cell_y_loc  =  <your_object_y_location_column>

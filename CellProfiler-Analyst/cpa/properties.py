@@ -34,11 +34,11 @@ string_vars = ['db_type',
                'image_csv_file', 
                'object_csv_file',
                'table_id', 
-               'image_id', 
-               'object_id', 
+               'image_id',
+               'object_id',
                'plate_id', 
                'well_id',
-               'cell_x_loc', 
+               'cell_x_loc',
                'cell_y_loc',
                'image_url_prepend',
                'image_tile_size', 
@@ -564,7 +564,11 @@ class Properties(Singleton):
             except:
                 logging.warn('PROPERTIES WARNING (training_set): Training set at "%s" could not be found.'%(self.training_set))
             logging.info('PROPERTIES: Training set found at "%s"'%(self.training_set))
-        
+
+        # if object_table field defined then cell_x_loc and cell_y_loc should be defined
+        if self.field_defined('object_table'):
+            assert self.field_defined(self.cell_y_loc) and self.field_defined(self.cell_x_loc), 'PROPERTIES ERROR (cell location): cell_x_loc and cell_y_loc should be defined when there is an object table!'
+
         if self.field_defined('class_table'):
             assert self.class_table != self.image_table, 'PROPERTIES ERROR (class_table): class_table cannot be the same as image_table!'
             assert self.class_table != self.object_table, 'PROPERTIES ERROR (class_table): class_table cannot be the same as object_table!'
