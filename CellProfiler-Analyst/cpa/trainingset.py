@@ -29,6 +29,9 @@ class TrainingSet:
         df_norm = (df - df.mean()) / (df.max() - df.min())
         return df.values
 
+    # Get back an array with labels instead of numbers
+    def get_class_per_object(self):
+        return [self.labels[self.label_array[i] - 1] for i in range(len(self.label_array))]
 
 
     def Clear(self):
@@ -79,7 +82,7 @@ class TrainingSet:
 
         self.label_matrix = numpy.array(self.label_matrix)
         self.values = numpy.array(self.values, np.float64)
-        self.label_array = numpy.nonzero(self.label_matrix + 1)[1] + 1
+        self.label_array = numpy.nonzero(self.label_matrix + 1)[1] + 1 # Convert to array
 
 
     def Load(self, filename, labels_only=False):

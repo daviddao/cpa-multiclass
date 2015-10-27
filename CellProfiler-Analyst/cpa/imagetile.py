@@ -76,6 +76,7 @@ class ImageTile(ImagePanel):
         if self.popupMenu is not None:
             return
         popupMenuItems = ['View full images of selected',
+                          'View predicted probability scores',
                           'Select all\tCtrl+A',
                           'Deselect all\tCtrl+D',
                           'Invert selection\tCtrl+I',
@@ -103,13 +104,13 @@ class ImageTile(ImagePanel):
                                         brightness=self.brightness, contrast=self.contrast,
                                         scale=self.scale)
                 imViewer.imagePanel.SelectPoint(db.GetObjectCoords(obKey))
-        elif choice == 1:
-            self.bin.SelectAll()
         elif choice == 2:
-            self.bin.DeselectAll()
+            self.bin.SelectAll()
         elif choice == 3:
-            self.bin.InvertSelection()
+            self.bin.DeselectAll()
         elif choice == 4:
+            self.bin.InvertSelection()
+        elif choice == 5:
             self.bin.RemoveSelectedTiles()
             
     def OnDClick(self, evt):

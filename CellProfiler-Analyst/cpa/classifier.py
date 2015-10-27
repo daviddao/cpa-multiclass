@@ -245,7 +245,7 @@ class Classifier(wx.Frame):
         self.find_rules_sizer.Add(self.checkProgressBtn)
         self.Bind(wx.EVT_BUTTON, self.OnCheckProgress, self.checkProgressBtn)
         # Plot nice graphics Button
-        self.plotBtn = wx.Button(self.find_rules_panel, -1, 'Plot Embedding')
+        self.plotBtn = wx.Button(self.find_rules_panel, -1, 'ROC Curve')
         self.plotBtn.Disable()
         self.find_rules_sizer.Add((5, 20))
         self.find_rules_sizer.Add(self.plotBtn)
@@ -1166,6 +1166,31 @@ class Classifier(wx.Frame):
                 self.PostMessage('User canceled updating training set.')
                 return False
 
+    # Get values for predicting probablities and confidence scores on unclassified/classified bin
+    def FetchValues(self):
+        with tilecollection.load_unlock():
+            try:
+                def cb(frac):
+                    cont, skip = dlg.Update(int(frac * 100.), '%d%% Complete' % (frac * 100.))
+                    if not cont:  # cancel was pressed
+                        dlg.Destroy()
+                        raise StopCalculating()
+
+                dlg = wx.ProgressDialog('Fetching cell data for unclassified bin...', '0% Complete', 100, self,
+                                        wx.PD_ELAPSED_TIME | wx.PD_ESTIMATED_TIME | wx.PD_REMAINING_TIME | wx.PD_CAN_ABORT)
+                self.unclassifiedSet = TrainingSet(p)
+                self.unclassifiedSet.Create(labels=[bin.label for bin in self.classBins],
+                                        keyLists=[bin.GetObjectKeys() for bin in self.unclassifiedBin],
+                                        callback=cb)
+                self.PostMessage('Values updated.')
+                dlg.Destroy()
+                return True
+            except StopCalculating:
+                self.PostMessage('User canceled updating values.')
+                return False
+
+
+
     def OnFindRules(self, evt):
         if not self.ValidateNumberOfRules():
             errdlg = wx.MessageDialog(self, 'Classifier will not run for the number of rules you have entered.',
@@ -1747,56 +1772,68 @@ class Classifier(wx.Frame):
         # logging.info("We have " + str(number_of_classes) + " Classes")
         return number_of_classes
 
-    # Random Forest Embedding of the Training Data
+    # ROC Curve for multi class # TODO: Binary class ROC Curve
     def PlotResults(self):
         import matplotlib.pyplot as plt
+        import seaborn
         from matplotlib import offsetbox
-        from sklearn import (manifold, datasets, decomposition, ensemble, lda,
-                     random_projection)
+        from sklearn.metrics import roc_curve, auc
+        from sklearn.cross_validation import train_test_split
+        from sklearn.preprocessing import label_binarize
+        from sklearn.multiclass import OneVsRestClassifier
 
-        
-
-        labels = self.trainingSet.label_array
-        classes = self.GetNumberOfClasses()
-        # Function to plot embedding
-        def plot_embedding(X, title=None):
-            x_min, x_max = np.min(X, 0), np.max(X, 0)
-            X = (X - x_min) / (x_max - x_min)
-
-            plt.figure()
-            ax = plt.subplot(111)
-            for i in range(X.shape[0]):
-                plt.text(X[i, 0], X[i, 1], str(labels[i]),
-                color=plt.cm.Set1(labels[i] / float(classes)),
-                fontdict={'weight': 'bold', 'size': 9})
-
-
-
-            plt.xticks([]), plt.yticks([])
-            if title is not None:
-                plt.title(title)
-
-            plt.show()
-
-        # t-SNE embedding of the digits dataset
-        hasher = ensemble.RandomTreesEmbedding(n_estimators=200, random_state=0,
-                                       max_depth=5)
-
-        # Normalize the values
+        # Import some data to play with
         X = self.trainingSet.normalize()
+        y = self.trainingSet.get_class_per_object()
+        n_classes = self.GetNumberOfClasses()
 
-        # normalise the values
 
-        t0 = time()
-        X_transformed = hasher.fit_transform(X)
-        pca = decomposition.TruncatedSVD(n_components=2)
-        t0 = time()
-        X_reduced = pca.fit_transform(X_transformed)
+        # Binarize the output
+        y = label_binarize(y, classes=self.trainingSet.labels)
 
-        plot_embedding(X_reduced,
-                       "Random Forest Embedding of Training Set (time %.2fs)" %
-                       (time() - t0))
+        # shuffle and split training and test sets
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.5,
+                                                            random_state=0)
 
+        # Learn to predict each class against the other
+        clf = OneVsRestClassifier(self.algorithm.classifier)
+        clf.fit(X_train, y_train)
+        if hasattr(self.algorithm.classifier, "predict_proba"):
+            y_score = clf.predict_proba(X_test)        
+        else: # use decision function
+            y_score = clf.decision_function(X_test)
+
+        # Compute ROC curve and ROC area for each class
+        fpr = dict()
+        tpr = dict()
+        roc_auc = dict()
+        for i in range(n_classes):
+            fpr[i], tpr[i], _ = roc_curve(y_test[:, i], y_score[:, i])
+            roc_auc[i] = auc(fpr[i], tpr[i])
+
+        # Compute micro-average ROC curve and ROC area
+        if n_classes > 1:
+            fpr["micro"], tpr["micro"], _ = roc_curve(y_test.ravel(), y_score.ravel())
+            roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
+
+        # Plot ROC curve
+        plt.figure()
+        if n_classes > 1:
+            plt.plot(fpr["micro"], tpr["micro"],
+                     label='micro-average ROC curve (area = {0:0.2f})'
+                           ''.format(roc_auc["micro"]))
+        for i in range(n_classes):
+            plt.plot(fpr[i], tpr[i], label='ROC curve of {0} (area = {1:0.2f})'
+                                           ''.format(self.trainingSet.labels[i], roc_auc[i]))
+
+        plt.plot([0, 1], [0, 1], 'k--')
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('Receiver operating characteristic of multi-class {0}. Training/Test 50/50'.format(self.algorithm.name))
+        plt.legend(loc="lower right")
+        plt.show()
 
 
 class StopCalculating(Exception):
