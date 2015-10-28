@@ -75,8 +75,9 @@ def create_perobject_class_table(classifier, classNames):
 
 
 
-def FilterObjectsFromClassN(classNum, classifier, filterKeys):
+def FilterObjectsFromClassN(classNum, classifier, filterKeys, uncertain):
     '''
+    uncertain: allows to search for uncertain (regarding the probs assigned by the classifier) cell images
     classNum: 1-based index of the class to retrieve obKeys from
     classifier: trained classifier object
     filterKeys: (optional) A list of specific imKeys OR obKeys (NOT BOTH)
@@ -120,8 +121,16 @@ def FilterObjectsFromClassN(classNum, classifier, filterKeys):
     cell_data = np.array([row[-number_of_features:] for row in data]) #last number_of_features columns in row
     object_keys = np.array([row[:-number_of_features] for row in data]) #all elements in row before last (number_of_features) elements
 
-    predicted_classes = classifier.Predict(cell_data)
-    res = object_keys[predicted_classes == classNum * np.ones(predicted_classes.shape)].tolist() #convert to list 
+    res = [] # list
+    if uncertain:
+        # Our requirement: max prob is lower than a specific threshold
+        probabilities = classifier.PredictProba(cell_data) #
+        threshold = 1.3 / probabilities.shape[1] # slightly above random selection
+        indices = np.where(np.max(probabilities,axis=1) < threshold)[0] # get all indices where this is true
+        res = [object_keys[i] for i in indices] 
+    else:
+        predicted_classes = classifier.Predict(cell_data)
+        res = object_keys[predicted_classes == classNum * np.ones(predicted_classes.shape)].tolist() #convert to list 
     return map(tuple,res) # ... and then to tuples
 
 def _objectify(p, field):

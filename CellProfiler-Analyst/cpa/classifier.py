@@ -780,7 +780,14 @@ class Classifier(wx.Frame):
             self.openDimensReduxBtn.Disable()
             return
         sel = self.obClassChoice.GetSelection()
-        selectableClasses = ['random'] + [bin.label for bin in self.classBins if bin.trained]
+        selectableClasses = ['random'] 
+
+        # DD: Add new option to select uncertain images
+        if self.algorithm.trained:
+            selectableClasses += ['uncertain']
+
+        selectableClasses += [bin.label for bin in self.classBins if bin.trained]
+        
         self.obClassChoice.SetItems(selectableClasses)
         if len(selectableClasses) < sel:
             sel = 0
@@ -918,7 +925,11 @@ class Classifier(wx.Frame):
 
                 self.PostMessage('Classifying %s.' % (p.object_name[1]))
 
-                obKeys += self.algorithm.FilterObjectsFromClassN(obClass, obKeysToTry)
+                if obClass == 1:
+                    obKeys += self.algorithm.FilterObjectsFromClassN(obClass, obKeysToTry, uncertain=True)
+                else:
+                    # because we start indexing classes with 1
+                    obKeys += self.algorithm.FilterObjectsFromClassN(obClass - 1, obKeysToTry)
 
 
                 attempts += len(obKeysToTry)
@@ -1166,31 +1177,6 @@ class Classifier(wx.Frame):
                 self.PostMessage('User canceled updating training set.')
                 return False
 
-    # Get values for predicting probablities and confidence scores on unclassified/classified bin
-    def FetchValues(self):
-        with tilecollection.load_unlock():
-            try:
-                def cb(frac):
-                    cont, skip = dlg.Update(int(frac * 100.), '%d%% Complete' % (frac * 100.))
-                    if not cont:  # cancel was pressed
-                        dlg.Destroy()
-                        raise StopCalculating()
-
-                dlg = wx.ProgressDialog('Fetching cell data for unclassified bin...', '0% Complete', 100, self,
-                                        wx.PD_ELAPSED_TIME | wx.PD_ESTIMATED_TIME | wx.PD_REMAINING_TIME | wx.PD_CAN_ABORT)
-                self.unclassifiedSet = TrainingSet(p)
-                self.unclassifiedSet.Create(labels=[bin.label for bin in self.classBins],
-                                        keyLists=[bin.GetObjectKeys() for bin in self.unclassifiedBin],
-                                        callback=cb)
-                self.PostMessage('Values updated.')
-                dlg.Destroy()
-                return True
-            except StopCalculating:
-                self.PostMessage('User canceled updating values.')
-                return False
-
-
-
     def OnFindRules(self, evt):
         if not self.ValidateNumberOfRules():
             errdlg = wx.MessageDialog(self, 'Classifier will not run for the number of rules you have entered.',
@@ -1237,7 +1223,7 @@ class Classifier(wx.Frame):
                     )
                 else:
                     # Convert labels
-                    logging.info(self.trainingSet.values)
+                    # logging.info(self.trainingSet.values)
                     self.algorithm.Train(self.trainingSet.label_array, self.trainingSet.values, output)
                     self.nRules = nRules # Hack
 
@@ -1835,6 +1821,28 @@ class Classifier(wx.Frame):
         plt.legend(loc="lower right")
         plt.show()
 
+    def PlotProbs(self,values):
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+        import pandas as pd
+        labels = self.trainingSet.labels
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+
+        tmp_df = pd.DataFrame(labels,columns=["Class"])
+        df = pd.DataFrame(values,columns=["Probs"])
+        df = pd.concat([df,tmp_df],axis=1)
+        df = df.sort_values("Probs",ascending=False)
+        # print df
+        sns.set(style="whitegrid")
+        if(len(df) > 7):
+            sns.barplot(x="Probs", y="Class", data=df, palette="RdBu_r",ax=ax)
+        else:
+            sns.barplot(y="Probs", x="Class", data=df, palette="RdBu_r",ax=ax)    
+        
+        plt.show()
+
+        
 
 class StopCalculating(Exception):
     pass

@@ -8,6 +8,7 @@ import imagetools
 import cPickle
 import wx
 
+from trainingset import CellCache
 
 p = Properties.getInstance()
 db = DBConnect.getInstance()
@@ -48,6 +49,9 @@ class ImageTile(ImagePanel):
         self.leftPressed = False
         self.showCenter  = False
         self.popupMenu   = None
+
+        self.cache = CellCache.getInstance()
+
         
         self.MapChannels(chMap)
         
@@ -104,6 +108,8 @@ class ImageTile(ImagePanel):
                                         brightness=self.brightness, contrast=self.contrast,
                                         scale=self.scale)
                 imViewer.imagePanel.SelectPoint(db.GetObjectCoords(obKey))
+        elif choice == 1:
+            self.DisplayProbs()
         elif choice == 2:
             self.bin.SelectAll()
         elif choice == 3:
@@ -112,7 +118,29 @@ class ImageTile(ImagePanel):
             self.bin.InvertSelection()
         elif choice == 5:
             self.bin.RemoveSelectedTiles()
-            
+
+    def DisplayProbs(self):
+
+        # Get the scikit learn classifier model
+        clf = self.classifier.algorithm
+        if clf.trained:
+                # Get the probability scores and visualise them in a histogramm
+                #for k in self.bin.SelectedKeys():
+                k = self.obKey
+                def get_data(k):
+                    d = self.cache.get_object_data(k)
+                    return d
+
+                values = [get_data(k)]
+                y_score = []
+                y_score = clf.PredictProba(values)        
+
+                y_score = y_score[0] # Flatten array
+                self.classifier.PlotProbs(y_score)
+        else:
+            dlg = wx.MessageDialog(self,'Please train your classifier first')
+            response = dlg.ShowModal()
+        
     def OnDClick(self, evt):
         imViewer = imagetools.ShowImage(self.obKey[:-1], list(self.chMap), parent=self.classifier,
                                         brightness=self.brightness, contrast=self.contrast,

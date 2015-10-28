@@ -78,8 +78,8 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
     def CreatePerObjectClassTable(self, classNames):
         multiclasssql.create_perobject_class_table(self, classNames)
 
-    def FilterObjectsFromClassN(self, obClass, obKeysToTry):
-        return multiclasssql.FilterObjectsFromClassN(obClass, self, obKeysToTry)
+    def FilterObjectsFromClassN(self, obClass, obKeysToTry, uncertain=False):
+        return multiclasssql.FilterObjectsFromClassN(obClass, self, obKeysToTry, uncertain)
 
     def IsTrained(self):
         return self.trained
@@ -126,6 +126,14 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
         if fout:
             print predictions
         return np.array(predictions)
+
+    # Return probabilities
+    def PredictProba(self, test_values):
+        try:
+            return self.classifier.predict_proba(test_values)
+        except:
+            logging.info("Selected algorithm doesn't provide probabilities")
+
 
     def SaveModel(self, model_filename, bin_labels):
         joblib.dump((self.classifier, bin_labels, self.name), model_filename, compress=9)
