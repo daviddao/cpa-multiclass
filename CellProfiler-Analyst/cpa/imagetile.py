@@ -120,25 +120,28 @@ class ImageTile(ImagePanel):
             self.bin.RemoveSelectedTiles()
 
     def DisplayProbs(self):
+        try:
+            # Get the scikit learn classifier model
+            clf = self.classifier.algorithm
+            if clf.trained:
+                    # Get the probability scores and visualise them in a histogramm
+                    #for k in self.bin.SelectedKeys():
+                    k = self.obKey
+                    def get_data(k):
+                        d = self.cache.get_object_data(k)
+                        return d
 
-        # Get the scikit learn classifier model
-        clf = self.classifier.algorithm
-        if clf.trained:
-                # Get the probability scores and visualise them in a histogramm
-                #for k in self.bin.SelectedKeys():
-                k = self.obKey
-                def get_data(k):
-                    d = self.cache.get_object_data(k)
-                    return d
+                    values = [get_data(k)]
+                    y_score = []
+                    y_score = clf.PredictProba(values)        
 
-                values = [get_data(k)]
-                y_score = []
-                y_score = clf.PredictProba(values)        
-
-                y_score = y_score[0] # Flatten array
-                self.classifier.PlotProbs(y_score)
-        else:
-            dlg = wx.MessageDialog(self,'Please train your classifier first', 'No probability scores available', style=wx.OK)
+                    y_score = y_score[0] # Flatten array
+                    self.classifier.PlotProbs(y_score)
+            else:
+                dlg = wx.MessageDialog(self,'Please train your classifier first', 'No probability scores available', style=wx.OK)
+                response = dlg.ShowModal()
+        except:
+            dlg = wx.MessageDialog(self,'Sorry. The selected classifier does not provide this functionality', 'No probability scores available', style=wx.OK)
             response = dlg.ShowModal()
         
     def OnDClick(self, evt):

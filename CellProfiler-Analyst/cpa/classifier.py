@@ -253,7 +253,7 @@ class Classifier(wx.Frame):
 
         # Define Classifiers
         AdaBoostClassifier = GeneralClassifier("ensemble.AdaBoostClassifier()", self)
-        SupportVectorMachines = GeneralClassifier("svm.LinearSVC()", self)
+        SupportVectorMachines = GeneralClassifier("svm.SVC()", self)
         RandomForestClassifier = GeneralClassifier("ensemble.RandomForestClassifier(n_estimators=200)", self)
         FastGentleBoostingClassifier = FastGentleBoosting(self)
 
@@ -328,14 +328,10 @@ class Classifier(wx.Frame):
 
     # DD - Inspector Visualisation
     def OnInspect(self, event):
-        chgdep = ChangeDepthDialog(None, self,
+        cdiag = ClassifierDialog(None, self,
             title='Inspect Model')
-        chgdep.ShowModal()
-        chgdep.Destroy()  
-        # frm = wx.Frame(None, title="html2.WebView sample", size=(700,500))
-        # frm.CreateStatusBar()
-        # pnl = TestPanel(frm)
-        # frm.Show()
+        cdiag.ShowModal()
+        cdiag.Destroy()  
 
     # JEN - Start Add
     def OpenDimensRedux(self, event):
@@ -729,11 +725,11 @@ class Classifier(wx.Frame):
         sel = self.obClassChoice.GetSelection()
         selectableClasses = ['random'] 
 
-        # DD: Add new option to select uncertain images
-        if self.algorithm.trained:
-            selectableClasses += ['uncertain']
-
         selectableClasses += [bin.label for bin in self.classBins if bin.trained]
+
+        # DD: Add new option to select uncertain images
+        if self.algorithm.IsTrained() and self.algorithm.name != "FastGentleBoosting":
+            selectableClasses += ['uncertain']
         
         self.obClassChoice.SetItems(selectableClasses)
         if len(selectableClasses) < sel:
@@ -872,11 +868,10 @@ class Classifier(wx.Frame):
 
                 self.PostMessage('Classifying %s.' % (p.object_name[1]))
 
-                if obClass == 1:
+                if obClassName == 'uncertain':
                     obKeys += self.algorithm.FilterObjectsFromClassN(obClass, obKeysToTry, uncertain=True)
                 else:
-                    # because we start indexing classes with 1
-                    obKeys += self.algorithm.FilterObjectsFromClassN(obClass - 1, obKeysToTry)
+                    obKeys += self.algorithm.FilterObjectsFromClassN(obClass, obKeysToTry)
 
 
                 attempts += len(obKeysToTry)

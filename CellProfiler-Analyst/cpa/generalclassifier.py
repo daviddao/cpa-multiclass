@@ -14,6 +14,7 @@ from sklearn import metrics
 import cPickle, json
 from sklearn.externals import joblib
 import seaborn as sns
+
 sns.set(style="whitegrid", palette="pastel", color_codes=True)
 
 
@@ -130,9 +131,11 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
     # Return probabilities
     def PredictProba(self, test_values):
         try:
-            return self.classifier.predict_proba(test_values)
+            if "predict_proba" in dir(self.classifier):
+                return self.classifier.predict_proba(test_values)
         except:
             logging.info("Selected algorithm doesn't provide probabilities")
+           
 
 
     def SaveModel(self, model_filename, bin_labels):
@@ -277,6 +280,13 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
         plt.xlabel('Measures')
         plt.show()
 
+    # Get sklearn params dic
+    def get_params(self):
+        return self.classifier.get_params()
+
+    # Set sklearn params 
+    def set_params(self, params):
+        self.classifier.set_params(params)
 
 
 

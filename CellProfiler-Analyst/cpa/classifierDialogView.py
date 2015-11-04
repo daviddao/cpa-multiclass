@@ -4,7 +4,7 @@ import wx
 class ClassifierDialog(wx.Dialog):
     
     def __init__(self, classifier, *args, **kw):
-        super(ChangeDepthDialog, self).__init__(*args, **kw) 
+        super(ClassifierDialog, self).__init__(*args, **kw) 
             
         self.InitUI()
         self.SetSize((500, 500))
