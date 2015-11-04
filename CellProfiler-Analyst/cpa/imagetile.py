@@ -138,7 +138,7 @@ class ImageTile(ImagePanel):
                 y_score = y_score[0] # Flatten array
                 self.classifier.PlotProbs(y_score)
         else:
-            dlg = wx.MessageDialog(self,'Please train your classifier first')
+            dlg = wx.MessageDialog(self,'Please train your classifier first', 'No probability scores available', style=wx.OK)
             response = dlg.ShowModal()
         
     def OnDClick(self, evt):

@@ -1,9 +1,6 @@
 # Encoding: utf-8
 from __future__ import with_statement
 
-# Enable SciKit Learn
-scikits_loaded = True
-
 import matplotlib
 matplotlib.use('WXAgg')
 import tableviewer
@@ -29,12 +26,14 @@ import re
 import cpa.helpmenu
 from dimensredux import PlotMain
 
+from webview import TestPanel
+from classifierDialogView import ClassifierDialog # This screen pops up to evaluate model
+
 import fastgentleboostingmulticlass
 from fastgentleboosting import FastGentleBoosting
 
-if scikits_loaded:
-    #from supportvectormachines import SupportVectorMachines
-    from generalclassifier import GeneralClassifier
+#from supportvectormachines import SupportVectorMachines
+from generalclassifier import GeneralClassifier
 
 # number of cells to classify before prompting the user for whether to continue
 MAX_ATTEMPTS = 10000
@@ -43,59 +42,6 @@ ID_CLASSIFIER = wx.NewId()
 CREATE_NEW_FILTER = '*create new filter*'
 
 required_fields = ['object_table', 'object_id', 'cell_x_loc', 'cell_y_loc']
-
-
-
-class ChangeDepthDialog(wx.Dialog):
-    
-    def __init__(self, classifier, *args, **kw):
-        super(ChangeDepthDialog, self).__init__(*args, **kw) 
-            
-        self.InitUI()
-        self.SetSize((250, 200))
-        self.SetTitle("Inspect Model")
-        self.env = classifier #Env for Environment it is in
-        
-        
-    def InitUI(self):
-
-        pnl = wx.Panel(self)
-        vbox = wx.BoxSizer(wx.VERTICAL)
-
-        sb = wx.StaticBox(pnl, label='Colors')
-        sbs = wx.StaticBoxSizer(sb, orient=wx.VERTICAL)        
-        sbs.Add(wx.RadioButton(pnl, label='256 Colors', 
-            style=wx.RB_GROUP))
-        sbs.Add(wx.RadioButton(pnl, label='16 Colors'))
-        sbs.Add(wx.RadioButton(pnl, label='2 Colors'))
-        
-        hbox1 = wx.BoxSizer(wx.HORIZONTAL)        
-        hbox1.Add(wx.RadioButton(pnl, label='Custom'))
-        hbox1.Add(wx.TextCtrl(pnl), flag=wx.LEFT, border=5)
-        sbs.Add(hbox1)
-        
-        pnl.SetSizer(sbs)
-       
-        hbox2 = wx.BoxSizer(wx.HORIZONTAL)
-        okButton = wx.Button(self, label='Ok')
-        closeButton = wx.Button(self, label='Close')
-        hbox2.Add(okButton)
-        hbox2.Add(closeButton, flag=wx.LEFT, border=5)
-
-        vbox.Add(pnl, proportion=1, 
-            flag=wx.ALL|wx.EXPAND, border=5)
-        vbox.Add(hbox2, 
-            flag=wx.ALIGN_CENTER|wx.TOP|wx.BOTTOM, border=10)
-
-        self.SetSizer(vbox)
-        
-        okButton.Bind(wx.EVT_BUTTON, self.OnClose)
-        closeButton.Bind(wx.EVT_BUTTON, self.OnClose)
-        
-        
-    def OnClose(self, e):
-        
-        self.Destroy()
 
 class Classifier(wx.Frame):
     """
@@ -305,13 +251,11 @@ class Classifier(wx.Frame):
         self.fetchSizer.Hide(self.fetchFromGroupSizer)
 
 
-
-        if scikits_loaded:
-            # Define Classifiers
-            AdaBoostClassifier = GeneralClassifier("ensemble.AdaBoostClassifier()", self)
-            SupportVectorMachines = GeneralClassifier("svm.LinearSVC()", self)
-            RandomForestClassifier = GeneralClassifier("ensemble.RandomForestClassifier(n_estimators=200)", self)
-            FastGentleBoostingClassifier = FastGentleBoosting(self)
+        # Define Classifiers
+        AdaBoostClassifier = GeneralClassifier("ensemble.AdaBoostClassifier()", self)
+        SupportVectorMachines = GeneralClassifier("svm.LinearSVC()", self)
+        RandomForestClassifier = GeneralClassifier("ensemble.RandomForestClassifier(n_estimators=200)", self)
+        FastGentleBoostingClassifier = FastGentleBoosting(self)
 
         # JK - Start Add
         # Define the Random Forest classification algorithm to be default and set the default
@@ -388,6 +332,10 @@ class Classifier(wx.Frame):
             title='Inspect Model')
         chgdep.ShowModal()
         chgdep.Destroy()  
+        # frm = wx.Frame(None, title="html2.WebView sample", size=(700,500))
+        # frm.CreateStatusBar()
+        # pnl = TestPanel(frm)
+        # frm.Show()
 
     # JEN - Start Add
     def OpenDimensRedux(self, event):
@@ -520,10 +468,10 @@ class Classifier(wx.Frame):
 
         # Classifier Type chooser
         self.classifierMenu = wx.Menu();
-        if scikits_loaded:
-            rfMenuItem = self.classifierMenu.AppendRadioItem(1, text='Random Forest', help='Uses Random Forest to classify')
-            adaMenuItem = self.classifierMenu.AppendRadioItem(2, text='Ada Boost', help='Uses Ada Boost to classify.')
-            svmMenuItem = self.classifierMenu.AppendRadioItem(3, text='Support Vector Machines', help='User Support Vector Machines to classify.')
+    
+        rfMenuItem = self.classifierMenu.AppendRadioItem(1, text='Random Forest', help='Uses Random Forest to classify')
+        adaMenuItem = self.classifierMenu.AppendRadioItem(2, text='Ada Boost', help='Uses Ada Boost to classify.')
+        svmMenuItem = self.classifierMenu.AppendRadioItem(3, text='Support Vector Machines', help='User Support Vector Machines to classify.')
         fgbMenuItem = self.classifierMenu.AppendRadioItem(4, text='Fast Gentle Boosting', help='Uses the Fast Gentle Boosting algorithm to find classifier rules.')
         self.GetMenuBar().Append(self.classifierMenu, 'Classifier')
 
@@ -536,10 +484,9 @@ class Classifier(wx.Frame):
         self.Bind(wx.EVT_MENU, self.OnRulesEdit, rulesEditMenuItem)
 
         # Bind events for algorithms
-        if scikits_loaded:
-            self.Bind(wx.EVT_MENU, self.AlgorithmSelect, adaMenuItem)
-            self.Bind(wx.EVT_MENU, self.AlgorithmSelect, svmMenuItem)
-            self.Bind(wx.EVT_MENU, self.AlgorithmSelect, rfMenuItem)
+        self.Bind(wx.EVT_MENU, self.AlgorithmSelect, adaMenuItem)
+        self.Bind(wx.EVT_MENU, self.AlgorithmSelect, svmMenuItem)
+        self.Bind(wx.EVT_MENU, self.AlgorithmSelect, rfMenuItem)
         self.Bind(wx.EVT_MENU, self.AlgorithmSelect, fgbMenuItem)
 
 
@@ -1670,32 +1617,36 @@ class Classifier(wx.Frame):
 #SKLEARN TODO
     def OnRulesEdit(self, evt):
         '''Lets the user edit the rules.'''
-        dlg = wx.TextEntryDialog(self, 'Rules:', 'Edit rules',
-                                 style=wx.TE_MULTILINE | wx.OK | wx.CANCEL)
-        dlg.SetValue(self.rules_text.Value)
-        if dlg.ShowModal() == wx.ID_OK:
-            try:
-                modelRules = self.algorithm.ParseModel(dlg.GetValue())
-                if len(modelRules[0][2]) != len(self.classBins):
-                    wx.MessageDialog(self, 'The rules you entered specify %s '
-                                           'classes but %s bins exist in classifier. Please adjust'
-                                           ' your rules or the number of bins so that they agree.' %
-                                     (len(modelRules[0][2]), len(self.classBins)),
-                                     'Rules Error', style=wx.OK).ShowModal()
+        if self.algorithm.name == "FastGentleBoosting":
+            dlg = wx.TextEntryDialog(self, 'Rules:', 'Edit rules',
+                                     style=wx.TE_MULTILINE | wx.OK | wx.CANCEL)
+            dlg.SetValue(self.rules_text.Value)
+            if dlg.ShowModal() == wx.ID_OK:
+                try:
+                    modelRules = self.algorithm.ParseModel(dlg.GetValue())
+                    if len(modelRules[0][2]) != len(self.classBins):
+                        wx.MessageDialog(self, 'The rules you entered specify %s '
+                                               'classes but %s bins exist in classifier. Please adjust'
+                                               ' your rules or the number of bins so that they agree.' %
+                                         (len(modelRules[0][2]), len(self.classBins)),
+                                         'Rules Error', style=wx.OK).ShowModal()
+                        self.OnRulesEdit(evt)
+                        return
+                except ValueError, e:
+                    wx.MessageDialog(self, 'Unable to parse your edited rules:\n\n' + str(e), 'Parse error',
+                                     style=wx.OK).ShowModal()
                     self.OnRulesEdit(evt)
                     return
-            except ValueError, e:
-                wx.MessageDialog(self, 'Unable to parse your edited rules:\n\n' + str(e), 'Parse error',
-                                 style=wx.OK).ShowModal()
-                self.OnRulesEdit(evt)
-                return
-            self.keysAndCounts = None
-            self.rules_text.Value = self.algorithm.ShowModel()
-            self.scoreAllBtn.Enable(True if self.algorithm.IsTrained() else False)
-            self.scoreImageBtn.Enable(True if self.algorithm.IsTrained() else False)
-            for bin in self.classBins:
-                bin.trained = True
-            self.UpdateClassChoices()
+                self.keysAndCounts = None
+                self.rules_text.Value = self.algorithm.ShowModel()
+                self.scoreAllBtn.Enable(True if self.algorithm.IsTrained() else False)
+                self.scoreImageBtn.Enable(True if self.algorithm.IsTrained() else False)
+                for bin in self.classBins:
+                    bin.trained = True
+                self.UpdateClassChoices()
+        else:
+            dlg = wx.MessageDialog(self,'Selected algorithm does not provide this feature', 'Unavailable', style=wx.OK)
+            response = dlg.ShowModal()
 
     def SetBrightness(self, brightness):
         ''' Updates the global image brightness across all tiles. '''

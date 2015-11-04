@@ -123,10 +123,13 @@ def FilterObjectsFromClassN(classNum, classifier, filterKeys, uncertain):
 
     res = [] # list
     if uncertain:
-        # Our requirement: max prob is lower than a specific threshold
+        # Our requirement: if the two largest scores are smaller than threshold
         probabilities = classifier.PredictProba(cell_data) #
-        threshold = 1.3 / probabilities.shape[1] # slightly above random selection
-        indices = np.where(np.max(probabilities,axis=1) < threshold)[0] # get all indices where this is true
+        threshold = 0.1 # TODO: This threshold should be adjustable
+        sorted_p = np.sort(probabilities)[:,-2:] # sorted array
+        diff = sorted_p[:,1] - sorted_p[:,0]
+
+        indices = np.where(diff < threshold)[0] # get all indices where this is true
         res = [object_keys[i] for i in indices] 
     else:
         predicted_classes = classifier.Predict(cell_data)
