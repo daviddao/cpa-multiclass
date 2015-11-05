@@ -495,6 +495,7 @@ class Classifier(wx.Frame):
         advancedMenu = wx.Menu()
         rulesEditMenuItem = advancedMenu.Append(-1, text=u'Edit Rules', help='Lets you edit the rules')
         paramsEditMenuItem = advancedMenu.Append(-1, text=u'Edit Parameters', help='Lets you edit the hyperparameters')
+        featureSelectMenuItem = advancedMenu.Append(-1, text=u'Check Features', help='Check the variance of your Training Data')
         self.GetMenuBar().Append(advancedMenu, 'Advanced')
 
         self.GetMenuBar().Append(cpa.helpmenu.make_help_menu(self), 'Help')
@@ -508,6 +509,8 @@ class Classifier(wx.Frame):
         self.Bind(wx.EVT_MENU, self.OnShowImageControls, imageControlsMenuItem)
         self.Bind(wx.EVT_MENU, self.OnParamsEdit, paramsEditMenuItem) 
         self.Bind(wx.EVT_MENU, self.OnRulesEdit, rulesEditMenuItem)
+        self.Bind(wx.EVT_MENU, self.OnFeatureSelect, featureSelectMenuItem)
+
 
         # Bind events for algorithms
         self.Bind(wx.EVT_MENU, self.AlgorithmSelect, rfMenuItem)
@@ -1059,6 +1062,7 @@ class Classifier(wx.Frame):
 
             self.PostMessage('Training set loaded.')
             self.GetNumberOfClasses() # Logs number of classes
+
 
     def OnSaveTrainingSet(self, evt):
         self.SaveTrainingSet()
@@ -1722,6 +1726,38 @@ class Classifier(wx.Frame):
         else:
             dlg = wx.MessageDialog(self,'Selected algorithm does not provide this feature', 'Unavailable', style=wx.OK)
             response = dlg.ShowModal()
+
+    '''
+    Performs Variance Thresholding on the Test Data
+    '''
+    def OnFeatureSelect(self, evt):
+        from sklearn import feature_selection
+
+        if self.trainingSet:
+
+
+            selector = feature_selection.VarianceThreshold()
+            selector.fit(self.trainingSet.values)
+
+            colnames = self.trainingSet.colnames
+            variances = selector.variances_
+            indices = np.argsort(variances)
+            variances = np.sort(variances)
+            result = ""
+            for i,var in enumerate(variances):
+                result += colnames[indices[i]] + " , " + str(var) + "\n"
+            
+            
+            dlg = wx.TextEntryDialog(self, 'Lowest Feature Variance:', 'Features ordered by lowest variance',
+                                     style=wx.TE_MULTILINE | wx.OK )
+            dlg.SetSize((500,500))
+            dlg.SetValue(result)
+            dlg.ShowModal()
+
+        else:
+            dlg = wx.MessageDialog(self,'Please load your training data first', 'No data available', style=wx.OK)
+            dlg.ShowModal()
+
 
     def SetBrightness(self, brightness):
         ''' Updates the global image brightness across all tiles. '''

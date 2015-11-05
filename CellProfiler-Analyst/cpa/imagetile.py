@@ -139,10 +139,10 @@ class ImageTile(ImagePanel):
                     self.classifier.PlotProbs(y_score)
             else:
                 dlg = wx.MessageDialog(self,'Please train your classifier first', 'No probability scores available', style=wx.OK)
-                response = dlg.ShowModal()
+                dlg.ShowModal()
         except:
             dlg = wx.MessageDialog(self,'Sorry. The selected classifier does not provide this functionality', 'No probability scores available', style=wx.OK)
-            response = dlg.ShowModal()
+            dlg.ShowModal()
         
     def OnDClick(self, evt):
         imViewer = imagetools.ShowImage(self.obKey[:-1], list(self.chMap), parent=self.classifier,

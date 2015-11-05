@@ -17,13 +17,6 @@ import seaborn as sns
 
 sns.set(style="whitegrid", palette="pastel", color_codes=True)
 
-
-'''
-TODO missing functions for class algorithm
-Show model
-GetComplxTxt <- Get params
-'''
-
 class GeneralClassifier(BaseEstimator, ClassifierMixin):
     def __init__(self, classifier = "lda.LDA()", env=None):
         self.classBins = []
@@ -55,7 +48,7 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
         labels = self.env.trainingSet.label_array
         values = self.env.trainingSet.values
         classificationReport = self.ClassificationReport(labels, self.XValidatePredict(labels, values, folds=5, stratified=True))
-        print classificationReport
+        logging.info(classificationReport)
         self.plot_classification_report(classificationReport)
 
 
