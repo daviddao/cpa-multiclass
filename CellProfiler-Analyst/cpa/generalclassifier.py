@@ -26,12 +26,17 @@ GetComplxTxt <- Get params
 
 class GeneralClassifier(BaseEstimator, ClassifierMixin):
     def __init__(self, classifier = "lda.LDA()", env=None):
-        logging.info('Initialized New Classifier: ' + classifier)
-        self.name = "" # Name for User Information
         self.classBins = []
         self.classifier = eval(classifier)
         self.trained = False
         self.env = env # Env is Classifier in Legacy Code -- maybe renaming ?
+        self.name = self.name()
+
+        logging.info('Initialized New Classifier: ' + self.name)
+
+    # Return name
+    def name(self):
+        return self.classifier.__class__.__name__
 
     def CheckProgress(self):
         #import wx
@@ -150,9 +155,9 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
                 colnames = self.env.trainingSet.colnames
                 importances = self.classifier.feature_importances_
                 indices = np.argsort(importances)[::-1]
-                return "\n".join([str(colnames[indices[f]]) for f in range(self.env.nRules)])
+                return "Feature importance:\n".join([str(colnames[indices[f]]) for f in range(self.env.nRules)])
             except:
-                return 'Nothing to show'
+                return ''
         else:
             return ''
 

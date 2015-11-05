@@ -11,10 +11,13 @@ from time import time
 class FastGentleBoosting(object):
     def __init__(self, classifier = None):
         logging.info('Initialized New Fast Gentle Boosting Classifier')
-        self.name = ""
+        self.name = self.name()
         self.model = None
         self.classBins = []
         self.classifier = classifier
+
+    def name(self):
+        return self.__class__.__name__
 
     def CheckProgress(self):
         import wx

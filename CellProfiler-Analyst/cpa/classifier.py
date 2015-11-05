@@ -250,35 +250,41 @@ class Classifier(wx.Frame):
         # JEN - End Add
         self.fetchSizer.Hide(self.fetchFromGroupSizer)
 
+        #######################
+        #### Model Section ####
+        #######################
 
         # Define Classifiers
+        RandomForestClassifier = GeneralClassifier("ensemble.RandomForestClassifier()", self)
         AdaBoostClassifier = GeneralClassifier("ensemble.AdaBoostClassifier()", self)
-        SupportVectorMachines = GeneralClassifier("svm.SVC()", self)
-        RandomForestClassifier = GeneralClassifier("ensemble.RandomForestClassifier(n_estimators=200)", self)
+        SVC = GeneralClassifier("svm.SVC(probability=True)", self) # Need to turn on probs
+        
+        GradientBoostingClassifier = GeneralClassifier("ensemble.GradientBoostingClassifier()", self)
+        LogisticRegression = GeneralClassifier("linear_model.LogisticRegression()", self)
+        LDA = GeneralClassifier("lda.LDA()", self)
+        KNeighborsClassifier = GeneralClassifier("neighbors.KNeighborsClassifier()", self)
         FastGentleBoostingClassifier = FastGentleBoosting(self)
 
         # JK - Start Add
         # Define the Random Forest classification algorithm to be default and set the default
         self.algorithm = RandomForestClassifier
-        self.algorithm.name = "RandomForest"
         self.complexityTxt.SetLabel(str(self.algorithm.ComplexityTxt()))
 
-        # helps translating the checked item for loadModel
-        self.classifier2ItemId = {
-            'randomforest' : 1,
-            'adaboost' : 2,
-            'supportvectormachines' : 3,
-            'fastgentleboosting' : 4,
+        self.algorithms = {
+            'RandomForestClassifier': RandomForestClassifier,
+            'AdaBoostClassifier': AdaBoostClassifier,
+            'SVC' : SVC,
+            'GradientBoostingClassifier': GradientBoostingClassifier,
+            'LogisticRegression': LogisticRegression,
+            'LDA': LDA,
+            'KNeighborsClassifier': KNeighborsClassifier,
+            'FastGentleBoosting' : FastGentleBoostingClassifier
         }
 
-        self.algorithms = {
-            'randomforest': RandomForestClassifier,
-            # TODO adapt if scikit loaded inside object
-            'adaboost': AdaBoostClassifier,
-            'supportvectormachines': SupportVectorMachines,
-            'fastgentleboosting': FastGentleBoostingClassifier
-        }
-        # JK - End Add
+
+        #####################
+        #### GUI Section ####
+        #####################
 
         # add the default classes
         #for class in range(1, num_classes+1):
@@ -351,15 +357,13 @@ class Classifier(wx.Frame):
     def AlgorithmSelect(self, event):
         selectedItem = re.sub('[\W_]+', '', self.classifierMenu.FindItemById(event.GetId()).GetText())
         try:
-            self.algorithm = self.algorithms[selectedItem.lower()]
-            # Save the name
-            self.algorithm.name = selectedItem
-            logging.info("Algorithm " + selectedItem + " succesfully loaded")
+            self.algorithm = self.algorithms[selectedItem]
+            logging.info("Classifier " + selectedItem + " successfully loaded")
             self.complexityTxt.SetLabel(str(self.algorithm.ComplexityTxt())) # Set new label to # box
         except:
             # Fall back to default algorithm
-            logging.error('Could not load specified algorithm, falling back to default.')
-            self.algorithm = GeneralClassifier()
+            logging.error('Could not load specified algorithm, falling back to RandomForestClassifier.')
+            self.algorithm = self.algorithms[0]
 
         # Update the GUI complexity text and classifier description
         # self.complexityTxt.SetLabel(self.algorithm.get_params())
@@ -464,11 +468,27 @@ class Classifier(wx.Frame):
 
         # Classifier Type chooser
         self.classifierMenu = wx.Menu();
-    
-        rfMenuItem = self.classifierMenu.AppendRadioItem(1, text='Random Forest', help='Uses Random Forest to classify')
-        adaMenuItem = self.classifierMenu.AppendRadioItem(2, text='Ada Boost', help='Uses Ada Boost to classify.')
-        svmMenuItem = self.classifierMenu.AppendRadioItem(3, text='Support Vector Machines', help='User Support Vector Machines to classify.')
-        fgbMenuItem = self.classifierMenu.AppendRadioItem(4, text='Fast Gentle Boosting', help='Uses the Fast Gentle Boosting algorithm to find classifier rules.')
+
+        # helps translating the checked item for loadModel
+        self.classifier2ItemId = {
+            'RandomForestClassifier' : 1,
+            'AdaBoostClassifier' : 2,
+            'SVC' : 3,
+            'GradientBoostingClassifier': 4,
+            'LogisticRegression': 5,
+            'LDA': 6,
+            'KNeighborsClassifier': 7,
+            'FastGentleBoosting' : 8
+        }
+
+        rfMenuItem = self.classifierMenu.AppendRadioItem(1, text='RandomForest Classifier', help='Uses RandomForest to classify')
+        adaMenuItem = self.classifierMenu.AppendRadioItem(2, text='AdaBoost Classifier', help='Uses AdaBoost to classify.')
+        svcMenuItem = self.classifierMenu.AppendRadioItem(3, text='SVC', help='Uses Support Vector Machines to classify.')
+        gbMenuItem = self.classifierMenu.AppendRadioItem(4, text='GradientBoosting Classifier', help='Uses GradientBoosting to classify')
+        lgMenuItem = self.classifierMenu.AppendRadioItem(5, text='LogisticRegression', help='Uses LogisticRegression to classify.')
+        ldaMenuItem = self.classifierMenu.AppendRadioItem(6, text='LDA', help='Uses LDA to classify.')
+        knnMenuItem = self.classifierMenu.AppendRadioItem(7, text='KNeighbors Classifier', help='Uses the kNN algorithm to classify.')
+        fgbMenuItem = self.classifierMenu.AppendRadioItem(8, text='Fast Gentle Boosting', help='Uses the Fast Gentle Boosting algorithm to find classifier rules.')
         self.GetMenuBar().Append(self.classifierMenu, 'Classifier')
 
         # Advanced menu
@@ -490,9 +510,13 @@ class Classifier(wx.Frame):
         self.Bind(wx.EVT_MENU, self.OnRulesEdit, rulesEditMenuItem)
 
         # Bind events for algorithms
-        self.Bind(wx.EVT_MENU, self.AlgorithmSelect, adaMenuItem)
-        self.Bind(wx.EVT_MENU, self.AlgorithmSelect, svmMenuItem)
         self.Bind(wx.EVT_MENU, self.AlgorithmSelect, rfMenuItem)
+        self.Bind(wx.EVT_MENU, self.AlgorithmSelect, adaMenuItem)
+        self.Bind(wx.EVT_MENU, self.AlgorithmSelect, svcMenuItem)
+        self.Bind(wx.EVT_MENU, self.AlgorithmSelect, gbMenuItem)
+        self.Bind(wx.EVT_MENU, self.AlgorithmSelect, lgMenuItem)
+        self.Bind(wx.EVT_MENU, self.AlgorithmSelect, ldaMenuItem)
+        self.Bind(wx.EVT_MENU, self.AlgorithmSelect, knnMenuItem)
         self.Bind(wx.EVT_MENU, self.AlgorithmSelect, fgbMenuItem)
 
 
@@ -940,11 +964,11 @@ class Classifier(wx.Frame):
                 logging.info("Detected different setted classifier: " + tmp_name + ", switching to " + self.algorithm.name)
                 # Restore the name
                 self.algorithm.name = tmp_name
-                self.algorithm = self.algorithms[select.lower()]
+                self.algorithm = self.algorithms[select]
                 # Load again
                 self.algorithm.LoadModel(filename)
 
-            itemId = self.classifier2ItemId[select.lower()]
+            itemId = self.classifier2ItemId[select]
             # Checks the MenuItem
             self.classifierMenu.Check(itemId, True)
 
@@ -1671,8 +1695,6 @@ class Classifier(wx.Frame):
             dlg.SetValue(string)
             if dlg.ShowModal() == wx.ID_OK:
                 try:
-
-                    # params = {}
                     s = dlg.GetValue() 
                     s = s.split("\n")[:-1] # Get rid of the last element
                     for el in s:
@@ -1680,24 +1702,10 @@ class Classifier(wx.Frame):
                         if types[el[0]] == type(""):
                             el = "{\'" + el[0] + "\':" + "\'" + el[1] + "\'" + "}" # add some ''
                         else:
-                            el = "{\'" + el[0] + "\':" + el[1] + "}" # add some ''
+                            el = "{\'" + el[0] + "\':" + el[1] + "}" # add '' for strings
 
                         logging.info("Setting params to: " + el)
-                        self.algorithm.set_params(eval(el))
-
-                    # def convertToOriginalType(key, el):
-                    #     if type(True) == types[key]:
-                    #         return bool(el)
-                    #     if type(1) == types[key]:
-                    #         return int(el)
-                    #     if type(1.0) == types[key]:
-                    #         return float(el)
-                    #     if type(None) == types[key]:
-                    #         return el
-
-                    # for el in s:
-                    #     el = el.split(" : ") 
-                    #     params[el[0]] = convertToOriginalType(el[0],el[1])
+                        self.algorithm.set_params(eval(el)) # now evaluate
 
                 except ValueError, e:
                     wx.MessageDialog(self, 'Unable to parse your edited hyperparameters:\n\n' + str(e), 'Parse error',

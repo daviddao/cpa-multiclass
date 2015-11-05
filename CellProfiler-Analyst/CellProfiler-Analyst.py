@@ -191,9 +191,9 @@ class MainGUI(wx.Frame):
         # console and logging
         self.console = wx.TextCtrl(self, -1, '', style=wx.TE_MULTILINE|wx.TE_READONLY)
         self.console.SetFont(wx.Font(10, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
-        self.console.SetBackgroundColour('#111111')
+        self.console.SetBackgroundColour('#FFFFFF')
 
-        self.console.SetForegroundColour('#DDDDDD')
+        self.console.SetForegroundColour('#000000')
         log_level = logging.DEBUG
         self.logr = logging.getLogger()
         self.set_log_level(log_level)
