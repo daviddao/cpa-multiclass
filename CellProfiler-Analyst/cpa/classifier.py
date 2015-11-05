@@ -455,9 +455,9 @@ class Classifier(wx.Frame):
         self.GetMenuBar().Append(viewMenu, 'View')
 
         # Rules menu
-        rulesMenu = wx.Menu()
-        rulesEditMenuItem = rulesMenu.Append(-1, text=u'Edit…', help='Lets you edit the rules')
-        self.GetMenuBar().Append(rulesMenu, 'Rules')
+        # rulesMenu = wx.Menu()
+        # rulesEditMenuItem = rulesMenu.Append(-1, text=u'Edit…', help='Lets you edit the rules')
+        # self.GetMenuBar().Append(rulesMenu, 'Rules')
 
         # Channel Menus
         self.CreateChannelMenus()
@@ -471,12 +471,22 @@ class Classifier(wx.Frame):
         fgbMenuItem = self.classifierMenu.AppendRadioItem(4, text='Fast Gentle Boosting', help='Uses the Fast Gentle Boosting algorithm to find classifier rules.')
         self.GetMenuBar().Append(self.classifierMenu, 'Classifier')
 
+        # Advanced menu
+        advancedMenu = wx.Menu()
+        rulesEditMenuItem = advancedMenu.Append(-1, text=u'Edit Rules', help='Lets you edit the rules')
+        paramsEditMenuItem = advancedMenu.Append(-1, text=u'Edit Parameters', help='Lets you edit the hyperparameters')
+        self.GetMenuBar().Append(advancedMenu, 'Advanced')
+
+        self.GetMenuBar().Append(cpa.helpmenu.make_help_menu(self), 'Help')
+
+
         # Bind events to different menu items
         self.Bind(wx.EVT_MENU, self.OnLoadTrainingSet, self.loadTSMenuItem)
         self.Bind(wx.EVT_MENU, self.OnSaveTrainingSet, self.saveTSMenuItem)
         self.Bind(wx.EVT_MENU, self.OnLoadModel, self.loadModelMenuItem) # JEN - Added
         self.Bind(wx.EVT_MENU, self.SaveModel, self.saveModelMenuItem) # JEN - Added
         self.Bind(wx.EVT_MENU, self.OnShowImageControls, imageControlsMenuItem)
+        self.Bind(wx.EVT_MENU, self.OnParamsEdit, paramsEditMenuItem) 
         self.Bind(wx.EVT_MENU, self.OnRulesEdit, rulesEditMenuItem)
 
         # Bind events for algorithms
@@ -572,8 +582,6 @@ class Classifier(wx.Frame):
         self.Bind(wx.EVT_MENU, self.OnFetchImage, item)
         item.Check()  # Add new "Images" menu bar item
         self.GetMenuBar().Append(self.imagesMenu, 'Images')
-
-        self.GetMenuBar().Append(cpa.helpmenu.make_help_menu(self), 'Help')
 
     #######################################
     # OnFetchImage
@@ -1631,6 +1639,70 @@ class Classifier(wx.Frame):
                     wx.MessageDialog(self, 'Unable to parse your edited rules:\n\n' + str(e), 'Parse error',
                                      style=wx.OK).ShowModal()
                     self.OnRulesEdit(evt)
+                    return
+                self.keysAndCounts = None
+                self.rules_text.Value = self.algorithm.ShowModel()
+                self.scoreAllBtn.Enable(True if self.algorithm.IsTrained() else False)
+                self.scoreImageBtn.Enable(True if self.algorithm.IsTrained() else False)
+                for bin in self.classBins:
+                    bin.trained = True
+                self.UpdateClassChoices()
+        else:
+            dlg = wx.MessageDialog(self,'Selected algorithm does not provide this feature', 'Unavailable', style=wx.OK)
+            response = dlg.ShowModal()
+
+    def OnParamsEdit(self, evt):
+        '''Lets the user edit the hyperparameters.'''
+        if self.algorithm.name != "FastGentleBoosting":
+            dlg = wx.TextEntryDialog(self, 'Hyperparameters:', 'Edit hyperparameters',
+                                     style=wx.TE_MULTILINE | wx.OK | wx.CANCEL)
+            dlg.SetSize((500,500))
+            #import json
+            #dlg.SetValue(json.dumps(self.algorithm.get_params(), sort_keys=True,indent=4, separators=(',', ': ')))
+
+            params = self.algorithm.get_params()
+            types = {}
+            # Transform to list
+            string = ""
+            for key in params:
+                string +=  key +  " : " + str(params[key]) + "\n"
+                types[key] = type(params[key]) # remember the types of each key
+
+            dlg.SetValue(string)
+            if dlg.ShowModal() == wx.ID_OK:
+                try:
+
+                    # params = {}
+                    s = dlg.GetValue() 
+                    s = s.split("\n")[:-1] # Get rid of the last element
+                    for el in s:
+                        el = el.split(" : ")
+                        if types[el[0]] == type(""):
+                            el = "{\'" + el[0] + "\':" + "\'" + el[1] + "\'" + "}" # add some ''
+                        else:
+                            el = "{\'" + el[0] + "\':" + el[1] + "}" # add some ''
+
+                        logging.info("Setting params to: " + el)
+                        self.algorithm.set_params(eval(el))
+
+                    # def convertToOriginalType(key, el):
+                    #     if type(True) == types[key]:
+                    #         return bool(el)
+                    #     if type(1) == types[key]:
+                    #         return int(el)
+                    #     if type(1.0) == types[key]:
+                    #         return float(el)
+                    #     if type(None) == types[key]:
+                    #         return el
+
+                    # for el in s:
+                    #     el = el.split(" : ") 
+                    #     params[el[0]] = convertToOriginalType(el[0],el[1])
+
+                except ValueError, e:
+                    wx.MessageDialog(self, 'Unable to parse your edited hyperparameters:\n\n' + str(e), 'Parse error',
+                                     style=wx.OK).ShowModal()
+                    self.OnParamsEdit(evt)
                     return
                 self.keysAndCounts = None
                 self.rules_text.Value = self.algorithm.ShowModel()

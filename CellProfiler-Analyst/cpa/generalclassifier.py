@@ -286,7 +286,7 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
 
     # Set sklearn params 
     def set_params(self, params):
-        self.classifier.set_params(params)
+        self.classifier.set_params(**params)
 
 
 
