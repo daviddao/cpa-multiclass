@@ -3,6 +3,11 @@ from __future__ import with_statement
 
 import matplotlib
 matplotlib.use('WXAgg')
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
+
 import tableviewer
 from datamodel import DataModel
 from imagecontrolpanel import ImageControlPanel
@@ -25,9 +30,6 @@ import wx
 import re
 import cpa.helpmenu
 from dimensredux import PlotMain
-
-from webview import TestPanel
-from classifierDialogView import ClassifierDialog # This screen pops up to evaluate model
 
 import fastgentleboostingmulticlass
 from fastgentleboosting import FastGentleBoosting
@@ -185,23 +187,17 @@ class Classifier(wx.Frame):
         self.find_rules_sizer.Add((5, 20))
         self.find_rules_sizer.Add(self.trainClassifierBtn)
         # Cross Validation Button
-        self.checkProgressBtn = wx.Button(self.find_rules_panel, -1, 'Model Validation')
-        self.checkProgressBtn.Disable()
+        self.evaluationBtn = wx.Button(self.find_rules_panel, -1, 'Plot Evaluation')
+        self.evaluationBtn.Disable()
         self.find_rules_sizer.Add((5, 20))
-        self.find_rules_sizer.Add(self.checkProgressBtn)
-        self.Bind(wx.EVT_BUTTON, self.OnCheckProgress, self.checkProgressBtn)
+        self.find_rules_sizer.Add(self.evaluationBtn)
+        self.Bind(wx.EVT_BUTTON, self.OnEvaluation, self.evaluationBtn)
         # Plot nice graphics Button
-        self.plotBtn = wx.Button(self.find_rules_panel, -1, 'ROC Curve')
-        self.plotBtn.Disable()
+        self.trainAllBtn = wx.Button(self.find_rules_panel, -1, 'Train All')
+        self.trainAllBtn.Disable()
         self.find_rules_sizer.Add((5, 20))
-        self.find_rules_sizer.Add(self.plotBtn)
-        self.Bind(wx.EVT_BUTTON, self.OnPlotResults, self.plotBtn)
-        # Inspector button
-        self.inspectBtn = wx.Button(self.find_rules_panel, -1, 'Inspect Data')
-        self.inspectBtn.Disable()
-        self.find_rules_sizer.Add((5, 20))
-        self.find_rules_sizer.Add(self.inspectBtn)
-        self.Bind(wx.EVT_BUTTON, self.OnInspect, self.inspectBtn)
+        self.find_rules_sizer.Add(self.trainAllBtn)
+        self.Bind(wx.EVT_BUTTON, self.OnTrainAll, self.trainAllBtn)
 
 
         self.find_rules_sizer.Add((5, 20))
@@ -265,6 +261,10 @@ class Classifier(wx.Frame):
         KNeighborsClassifier = GeneralClassifier("neighbors.KNeighborsClassifier()", self)
         FastGentleBoostingClassifier = FastGentleBoosting(self)
 
+        # BETA
+        #import autosklearn # Bayesian Optimisation
+        #AutoSklearnClassifier = GeneralClassifier("autosklearn.AutoSklearnClassifier()", self)
+
         # JK - Start Add
         # Define the Random Forest classification algorithm to be default and set the default
         self.algorithm = RandomForestClassifier
@@ -279,8 +279,8 @@ class Classifier(wx.Frame):
             'LDA': LDA,
             'KNeighborsClassifier': KNeighborsClassifier,
             'FastGentleBoosting' : FastGentleBoostingClassifier
+            #,'AutoSklearnClassifier': AutoSklearnClassifier
         }
-
 
         #####################
         #### GUI Section ####
@@ -304,7 +304,7 @@ class Classifier(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.OnFindRules, self.trainClassifierBtn)
         self.Bind(wx.EVT_BUTTON, self.ScoreAll, self.scoreAllBtn)
         self.Bind(wx.EVT_BUTTON, self.OnScoreImage, self.scoreImageBtn)
-        self.Bind(wx.EVT_BUTTON, self.OnInspect, self.inspectBtn)
+        #self.Bind(wx.EVT_BUTTON, self.OnInspect, self.inspectBtn)
         # JEN - Start Add
         self.Bind(wx.EVT_BUTTON, self.OpenDimensRedux, self.openDimensReduxBtn)
         # JEN - End Add
@@ -332,12 +332,8 @@ class Classifier(wx.Frame):
             if response == wx.ID_YES:
                 self.LoadTrainingSet(p.training_set)
 
-    # DD - Inspector Visualisation
-    def OnInspect(self, event):
-        cdiag = ClassifierDialog(None, self,
-            title='Inspect Model')
-        cdiag.ShowModal()
-        cdiag.Destroy()  
+
+ 
 
     # JEN - Start Add
     def OpenDimensRedux(self, event):
@@ -363,7 +359,7 @@ class Classifier(wx.Frame):
         except:
             # Fall back to default algorithm
             logging.error('Could not load specified algorithm, falling back to RandomForestClassifier.')
-            self.algorithm = self.algorithms[0]
+            self.algorithm = self.algorithms['RandomForestClassifier']
 
         # Update the GUI complexity text and classifier description
         # self.complexityTxt.SetLabel(self.algorithm.get_params())
@@ -479,6 +475,7 @@ class Classifier(wx.Frame):
             'LDA': 6,
             'KNeighborsClassifier': 7,
             'FastGentleBoosting' : 8
+            #,'AutoSklearnClassifier': 9
         }
 
         rfMenuItem = self.classifierMenu.AppendRadioItem(1, text='RandomForest Classifier', help='Uses RandomForest to classify')
@@ -489,7 +486,21 @@ class Classifier(wx.Frame):
         ldaMenuItem = self.classifierMenu.AppendRadioItem(6, text='LDA', help='Uses LDA to classify.')
         knnMenuItem = self.classifierMenu.AppendRadioItem(7, text='KNeighbors Classifier', help='Uses the kNN algorithm to classify.')
         fgbMenuItem = self.classifierMenu.AppendRadioItem(8, text='Fast Gentle Boosting', help='Uses the Fast Gentle Boosting algorithm to find classifier rules.')
+        #autoMenuItem = self.classifierMenu.AppendRadioItem(9, text='Auto Sklearn Classifier', help='State of the Art Hyperparameter Search. Might take a while.')
+
         self.GetMenuBar().Append(self.classifierMenu, 'Classifier')
+
+        # Evaluation menu
+        self.evalMenu = wx.Menu()
+
+        # Plotting options
+        rulesEditMenuItem = self.evalMenu.AppendRadioItem(1, text=u'Classification Report', help='Visualisation of Accuracy, Recall and F1 Scores')
+        paramsEditMenuItem = self.evalMenu.AppendRadioItem(2, text=u'ROC Curve', help='Plots a One vs all ROC Curve and calculates the area under the curve')
+        featureSelectMenuItem = self.evalMenu.AppendRadioItem(3, text=u'Precision Recall Curve', help='Plots a One vs all Precision Recall Curve')
+        learningMenuItem = self.evalMenu.AppendRadioItem(4, text=u'Learning Curve', help='Plots a One vs all Learning Curve')
+
+        self.GetMenuBar().Append(self.evalMenu, 'Evaluation')
+
 
         # Advanced menu
         advancedMenu = wx.Menu()
@@ -521,6 +532,8 @@ class Classifier(wx.Frame):
         self.Bind(wx.EVT_MENU, self.AlgorithmSelect, ldaMenuItem)
         self.Bind(wx.EVT_MENU, self.AlgorithmSelect, knnMenuItem)
         self.Bind(wx.EVT_MENU, self.AlgorithmSelect, fgbMenuItem)
+
+        #self.Bind(wx.EVT_MENU, self.AlgorithmSelect, autoMenuItem)
 
 
     def CreateChannelMenus(self):
@@ -778,23 +791,23 @@ class Classifier(wx.Frame):
         empty
         '''
         self.trainClassifierBtn.Enable()
-        if hasattr(self, 'checkProgressBtn'):
-            self.checkProgressBtn.Enable()
-            self.plotBtn.Enable() # added DD
-            self.inspectBtn.Enable() # added DD
+        if hasattr(self, 'evaluationBtn'):
+            self.evaluationBtn.Enable()
+            self.trainAllBtn.Enable() # added DD
+            #self.inspectBtn.Enable() # added DD
         if len(self.classBins) <= 1:
             self.trainClassifierBtn.Disable()
-            if hasattr(self, 'checkProgressBtn'):
-                self.checkProgressBtn.Disable()
-                self.plotBtn.Disable() # added DD
-                self.inspectBtn.Enable() # added DD
+            if hasattr(self, 'evaluationBtn'):
+                self.evaluationBtn.Disable()
+                self.trainAllBtn.Disable() # added DD
+                #self.inspectBtn.Enable() # added DD
         for bin in self.classBins:
             if bin.empty:
                 self.trainClassifierBtn.Disable()
-                if hasattr(self, 'checkProgressBtn'):
-                    self.checkProgressBtn.Disable()
-                    self.plotBtn.Disable() # added DD
-                    self.inspectBtn.Enable() # added DD
+                if hasattr(self, 'evaluationBtn'):
+                    self.evaluationBtn.Disable()
+                    self.trainAllBtn.Disable() # added DD
+                    #self.inspectBtn.Enable() # added DD
 
     def OnFetch(self, evt):
         # Parse out the GUI input values
@@ -1125,12 +1138,46 @@ class Classifier(wx.Frame):
             txtCtrl.SetForegroundColour('#FF0000')  # Set field to red if image doesn't exist
             self.SetStatusText('No such image.')
 
-    def OnCheckProgress(self, evt):
-        self.algorithm.CheckProgress()
+    # Nice plotting which depends on which plot one choses
+    def OnEvaluation(self, evt):
+        items = self.evalMenu.GetMenuItems()
+        selectedText = ""
+        for item in items:
+            if item.IsChecked():
+                selectedText = item.GetText()
+
+        if selectedText == "ROC Curve":
+            self.PlotROC()
+        elif selectedText == "Learning Curve":
+            self.PlotLearningCurveWrapper()
+        elif selectedText == "Precision Recall Curve":
+            self.PlotPrecisionRecall()
+        else:
+            self.algorithm.CheckProgress()
+
+    def PlotLearningCurveWrapper(self):
+        from sklearn import cross_validation
+        model = self.algorithm
+        clf = model.classifier
+        X_train = self.trainingSet.values
+        y_train = self.trainingSet.label_array
+
+        # Training Set is currently sorted. I will shuffle it
+        y_trans = y_train.reshape(y_train.shape[0],1)
+        df_values = pd.DataFrame(X_train, columns=self.trainingSet.colnames)
+        df_class = pd.DataFrame(y_trans, columns=["Class"])
+        df = pd.concat([df_class, df_values],axis=1)
+        df = df.reindex(np.random.permutation(df.index))
+        X_train = df[self.trainingSet.colnames].values
+        y_train = df["Class"].values
+
+        #cv = cross_validation.StratifiedKFold(y_train, n_folds=3, shuffle=False)
+        plot_title = 'Learning Curves ({})'.format(model.name)
+        self.PlotLearningCurve(clf, plot_title, X_train, y_train, cv=5)
 
     # Added by DD
-    def OnPlotResults(self, evt):
-        self.PlotResults()
+    def OnTrainAll(self, evt):
+        pass
 
     def UpdateTrainingSet(self):
         # pause tile loading
@@ -1820,10 +1867,79 @@ class Classifier(wx.Frame):
         # logging.info("We have " + str(number_of_classes) + " Classes")
         return number_of_classes
 
+    # Buggy?
+    def PlotPrecisionRecall(self):
+        from sklearn.metrics import precision_recall_curve
+        from sklearn.metrics import average_precision_score
+        from sklearn.cross_validation import train_test_split
+        from sklearn.preprocessing import label_binarize
+        from sklearn.multiclass import OneVsRestClassifier
+
+        # Import some data to play with
+        X = self.trainingSet.normalize()
+        y = self.trainingSet.get_class_per_object()
+        n_classes = self.GetNumberOfClasses()
+
+        # Binarize the output
+        y = label_binarize(y, classes=self.trainingSet.labels)
+
+        # Split into training and test
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.4)
+
+        # Run classifier
+        clf = OneVsRestClassifier(self.algorithm.classifier)
+        clf.fit(X_train, y_train)
+        if hasattr(self.algorithm.classifier, "predict_proba"):
+            y_score = clf.predict_proba(X_test)        
+        else: # use decision function
+            y_score = clf.decision_function(X_test)
+
+        # Compute Precision-Recall and plot curve
+        precision = dict()
+        recall = dict()
+        average_precision = dict()
+        for i in range(n_classes):
+            precision[i], recall[i], _ = precision_recall_curve(y_test[:, i],
+                                                                y_score[:, i])
+            average_precision[i] = average_precision_score(y_test[:, i], y_score[:, i])
+
+        # Compute micro-average precision curve and precision area
+        precision["micro"], recall["micro"], _ = precision_recall_curve(y_test.ravel(),
+            y_score.ravel())
+        average_precision["micro"] = average_precision_score(y_test, y_score,
+                                                             average="micro")
+
+        # Plot Precision-Recall curve
+        plt.clf()
+        plt.plot(recall[0], precision[0], label='Precision-Recall curve')
+        plt.xlabel('Recall')
+        plt.ylabel('Precision')
+        plt.ylim([0.0, 1.05])
+        plt.xlim([0.0, 1.0])
+        plt.title('Precision-Recall: Average Precision={0:0.2f}'.format(average_precision[0]))
+        plt.legend(loc="lower left")
+        plt.show()
+
+        # Plot Precision-Recall curve for each class
+        plt.clf()
+        plt.plot(recall["micro"], precision["micro"],
+                 label='micro-average Precision-recall curve (area = {0:0.2f})'
+                       ''.format(average_precision["micro"]))
+        for i in range(n_classes):
+            plt.plot(recall[i], precision[i],
+                     label='Precision-recall curve of class {0} (area = {1:0.2f})'
+                           ''.format(i, average_precision[i]))
+
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+        plt.xlabel('Recall')
+        plt.ylabel('Precision')
+        plt.title('Receiver operating characteristic of multi-class {}. 60/40 Split'.format(self.algorithm.name))
+        plt.legend(loc="lower right")
+        plt.show()
+
     # ROC Curve for multi class # TODO: Binary class ROC Curve
-    def PlotResults(self):
-        import matplotlib.pyplot as plt
-        import seaborn
+    def PlotROC(self):
         from matplotlib import offsetbox
         from sklearn.metrics import roc_curve, auc
         from sklearn.cross_validation import train_test_split
@@ -1835,12 +1951,11 @@ class Classifier(wx.Frame):
         y = self.trainingSet.get_class_per_object()
         n_classes = self.GetNumberOfClasses()
 
-
         # Binarize the output
         y = label_binarize(y, classes=self.trainingSet.labels)
 
         # shuffle and split training and test sets
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.5,
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.4,
                                                             random_state=0)
 
         # Learn to predict each class against the other
@@ -1879,14 +1994,11 @@ class Classifier(wx.Frame):
         plt.ylim([0.0, 1.05])
         plt.xlabel('False Positive Rate')
         plt.ylabel('True Positive Rate')
-        plt.title('Receiver operating characteristic of multi-class {0}. Training/Test 50/50'.format(self.algorithm.name))
+        plt.title('Receiver operating characteristic of multi-class {}. 60/40 Split'.format(self.algorithm.name))
         plt.legend(loc="lower right")
         plt.show()
 
     def PlotProbs(self,values):
-        import matplotlib.pyplot as plt
-        import seaborn as sns
-        import pandas as pd
         labels = self.trainingSet.labels
         fig = plt.figure()
         ax = fig.add_subplot(111)
@@ -1904,6 +2016,69 @@ class Classifier(wx.Frame):
         
         plt.show()
 
+    def PlotLearningCurve(self,estimator, plot_title, X, y, ylim=None, cv=None,
+                        n_jobs=1, train_sizes=np.linspace(0.1, 1.0, 5),
+                        scoring=None):
+        """
+        Generate a simple plot of the test and training learning curve.
+
+        Parameters
+        ----------
+        estimator : object type that implements the "fit" and "predict" methods
+            An object of that type which is cloned for each validation.
+
+        title : string
+            Title for the chart.
+
+        X : array-like, shape (n_samples, n_features)
+            Training vector, where n_samples is the number of samples and
+            n_features is the number of features.
+
+        y : array-like, shape (n_samples) or (n_samples, n_features), optional
+            Target relative to X for classification or regression;
+            null for unsupervised learning.
+
+        ylim : tuple, shape (ymin, ymax), optional
+            Defines minimum and maximum yvalues plotted.
+
+        cv : integer, cross-validation generator, optional
+            If an integer is passed, it is the number of folds (defaults to 3).
+            Specific cross-validation objects can be passed, see
+            sklearn.cross_validation module for the list of possible objects
+
+        n_jobs : integer, optional
+            Number of jobs to run in parallel (default 1).
+        """    
+        from sklearn.learning_curve import learning_curve
+        
+        plt.figure()
+        plt.title(plot_title)
+        if ylim is not None:
+            plt.ylim(*ylim)
+        plt.xlabel("Training examples")
+        plt.ylabel("Cost = 1 - Score")
+        train_sizes, train_scores, test_scores = learning_curve(estimator, X, y,
+                                                                cv=cv, n_jobs=n_jobs,
+                                                                train_sizes=train_sizes,
+                                                                scoring=scoring)
+        train_scores_mean = np.mean(train_scores, axis=1)
+        train_scores_std = np.std(train_scores, axis=1)
+        test_scores_mean = np.mean(test_scores, axis=1)
+        test_scores_std = np.std(test_scores, axis=1)
+        plt.grid()
+
+        plt.fill_between(train_sizes, 1 - train_scores_mean + train_scores_std,
+                         1 - train_scores_mean - train_scores_std, alpha=0.1,
+                         color="b")
+        plt.fill_between(train_sizes, 1 - test_scores_mean + test_scores_std,
+                         1 - test_scores_mean - test_scores_std, alpha=0.1, color="r")
+        plt.plot(train_sizes, 1 - train_scores_mean, 'o-', color="b",
+                 label="Training score")
+        plt.plot(train_sizes, 1 - test_scores_mean, 'o-', color="r",
+                 label="Test score")
+
+        plt.legend(loc="best")
+        plt.show()
         
 
 class StopCalculating(Exception):

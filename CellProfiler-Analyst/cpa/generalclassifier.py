@@ -148,7 +148,7 @@ class GeneralClassifier(BaseEstimator, ClassifierMixin):
                 colnames = self.env.trainingSet.colnames
                 importances = self.classifier.feature_importances_
                 indices = np.argsort(importances)[::-1]
-                return "Feature importance:\n".join([str(colnames[indices[f]]) for f in range(self.env.nRules)])
+                return "\n".join([str(colnames[indices[f]]) for f in range(self.env.nRules)])
             except:
                 return ''
         else:
@@ -308,7 +308,7 @@ if __name__ == '__main__':
     header = reader.next()
     label_to_labelidx = {}
     curlabel = 1
-
+ 
     def getNumlabel(strlabel):
         if strlabel in label_to_labelidx:
             return label_to_labelidx[strlabel]
