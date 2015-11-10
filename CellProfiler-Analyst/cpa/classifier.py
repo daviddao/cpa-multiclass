@@ -439,6 +439,8 @@ class Classifier(wx.Frame):
                                                    help='Loads objects and classes specified in a training set file.')
         self.saveTSMenuItem = self.fileMenu.Append(-1, text='Save training set\tCtrl+S',
                                                    help='Save your training set to file so you can reload these classified cells again.')
+        self.saveFullTSMenuItem = self.fileMenu.Append(-1, text='Save training set as CSV\tCtrl+S',
+                                                   help='Save your training data as CSV')
         self.fileMenu.AppendSeparator()
         # JEN - Start Add
         self.loadModelMenuItem = self.fileMenu.Append(-1, text='Load classifier model\tCtrl+Shift+O', help='Loads a classifier model specified in a text file')
@@ -515,6 +517,7 @@ class Classifier(wx.Frame):
         # Bind events to different menu items
         self.Bind(wx.EVT_MENU, self.OnLoadTrainingSet, self.loadTSMenuItem)
         self.Bind(wx.EVT_MENU, self.OnSaveTrainingSet, self.saveTSMenuItem)
+        self.Bind(wx.EVT_MENU, self.OnSaveFullTrainingSet, self.saveFullTSMenuItem)
         self.Bind(wx.EVT_MENU, self.OnLoadModel, self.loadModelMenuItem) # JEN - Added
         self.Bind(wx.EVT_MENU, self.SaveModel, self.saveModelMenuItem) # JEN - Added
         self.Bind(wx.EVT_MENU, self.OnShowImageControls, imageControlsMenuItem)
@@ -1080,6 +1083,9 @@ class Classifier(wx.Frame):
     def OnSaveTrainingSet(self, evt):
         self.SaveTrainingSet()
 
+    def OnSaveFullTrainingSet(self, evt):
+        self.SaveFullTrainingSet()
+
     def SaveTrainingSet(self):
         if not self.defaultTSFileName:
             self.defaultTSFileName = 'MyTrainingSet.txt'
@@ -1092,11 +1098,29 @@ class Classifier(wx.Frame):
             self.defaultTSFileName = os.path.split(filename)[1]
             self.SaveTrainingSetAs(filename)
 
+    def SaveFullTrainingSet(self):
+        if not self.defaultTSFileName:
+            self.defaultTSFileName = 'MyTrainingSet.csv'
+        saveDialog = wx.FileDialog(self, message="Save as:", defaultDir=os.getcwd(),
+                                   defaultFile=self.defaultTSFileName,
+                                   wildcard='Text files (*.csv)|*.csv|All files (*.*)|*.*',
+                                   style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT | wx.FD_CHANGE_DIR)
+        if saveDialog.ShowModal() == wx.ID_OK:
+            filename = saveDialog.GetPath()
+            self.defaultTSFileName = os.path.split(filename)[1]
+            self.SaveTrainingSetAsCSV(filename)
+
     def SaveTrainingSetAs(self, filename):
         classDict = {}
         self.trainingSet = TrainingSet(p)
         self.trainingSet.Create([bin.label for bin in self.classBins], [bin.GetObjectKeys() for bin in self.classBins])
         self.trainingSet.Save(filename)
+
+    def SaveTrainingSetAsCSV(self, filename):
+        classDict = {}
+        self.trainingSet = TrainingSet(p)
+        self.trainingSet.Create([bin.label for bin in self.classBins], [bin.GetObjectKeys() for bin in self.classBins])
+        self.trainingSet.SaveAsCSV(filename)
 
     def OnAddSortClass(self, evt):
         label = 'class_' + str(self.binsCreated)

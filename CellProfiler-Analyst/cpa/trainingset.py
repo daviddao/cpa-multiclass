@@ -190,6 +190,47 @@ class TrainingSet:
         f.close()
         logging.info('Training set saved to %s'%filename)
         self.saved = True
+
+    def SaveAsCSV(self, filename):
+        # check cache freshness
+        self.cache.clear_if_objects_modified()
+
+        #f = open(filename, 'w')
+        try:
+            from properties import Properties
+            import pandas as pd
+            # getting feature values
+            df = pd.DataFrame(self.values, columns=self.colnames)
+
+            # getting object key
+            tuples = self.get_object_keys()
+            keyList = map(lambda x : [x[0],x[1]], tuples)
+            df_keys = pd.DataFrame(keyList, columns=['ImageNumber','ObjectNumber'])
+
+            # getting label dataframe
+            labels = self.labels
+            label_array = self.label_array
+            labels = [labels[label_array[i] - 1] for i in range(len(label_array))]
+            df_class = pd.DataFrame(labels, columns=["Class"])
+
+            # Join to get the labeled data along the columns!
+            df_labeled = pd.concat([df_keys,df_class,df],axis=1)
+            df_labeled.to_csv(filename, index=False)
+            #p = Properties.getInstance()
+            #f.write('# Training set created while using properties: %s\n'%(p._filename))
+            #f.write('label '+' '.join(self.labels)+'\n')
+            #for label, obKey in self.entries:
+            #    line = '%s %s %s\n'%(label, ' '.join([str(int(k)) for k in obKey]), ' '.join([str(int(k)) for k in db.GetObjectCoords(obKey)]))
+            #    f.write(line)
+            #f.write('# ' + self.cache.save_to_string([k[1] for k in self.entries]) + '\n')
+
+        except:
+            logging.error("Error saving training set %s" % (filename))
+            #f.close()
+            raise
+        #f.close()
+        logging.info('Training set saved to %s as CSV'%filename)
+        #self.saved = True
             
 
     def get_object_keys(self):
