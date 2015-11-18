@@ -7,6 +7,7 @@ import zlib
 import wx
 import collections
 
+import pandas as pd
 from dbconnect import *
 from singleton import Singleton
 
@@ -15,13 +16,16 @@ db = DBConnect.getInstance()
 class TrainingSet:
     "A class representing a set of manually labeled cells."
 
-    def __init__(self, properties, filename='', labels_only=False):
+    def __init__(self, properties, filename='', labels_only=False, csv=False):
         self.properties = properties
         self.colnames = db.GetColnamesForClassifier()
         self.filename = filename
         self.cache = CellCache.getInstance()
         if filename != '':
-            self.Load(filename, labels_only=labels_only)
+            if csv:
+                self.LoadCSV(filename, labels_only=labels_only)
+            else:
+                self.Load(filename, labels_only=labels_only)
 
     def normalize(self):
         import pandas as pd
@@ -120,6 +124,50 @@ class TrainingSet:
         
         f.close()
         
+    def LoadCSV(self, filename, labels_only=True):
+        self.Clear()
+
+        df = pd.read_csv(filename)
+        labels = list(set(df['Class'].values)) # List of labels
+        labelDict = collections.OrderedDict()
+        for label in labels:
+            keys = df[['ImageNumber','ObjectNumber']][df['Class'] == label].values # Get the keys
+            keys = map(lambda x: tuple((x[0],x[1])), keys) # convert them into tuples
+            labelDict[label] = keys
+
+#         f = open(filename, 'U')
+#         lines = f.read()
+# #        lines = lines.replace('\r', '\n')    # replace CRs with LFs
+#         lines = lines.split('\n')
+#         labelDict = collections.OrderedDict()
+#         for l in lines:
+#             try:
+#                 if l.strip()=='': continue
+#                 if l.startswith('#'):
+#                     self.cache.load_from_string(l[2:])
+#                     continue
+                
+#                 label = l.strip().split(' ')[0]
+#                 if (label == "label"):
+#                     for labelname in l.strip().split(' ')[1:]:
+#                         if labelname not in labelDict.keys():
+#                             labelDict[labelname] = []
+#                     continue
+                
+#                 obKey = tuple([int(float(k)) for k in l.strip().split(' ')[1:len(object_key_columns())+1]])
+#                 labelDict[label] = labelDict.get(label, []) + [obKey]
+
+#             except:
+#                 logging.error('Error parsing training set %s, line >>>%s<<<'%(filename, l.strip()))
+#                 f.close()
+#                 raise
+            
+        # validate positions and renumber if necessary
+        self.Renumber(labelDict)
+        self.Create(labelDict.keys(), labelDict.values(), labels_only=labels_only)
+        
+        #f.close()
+
     def Renumber(self, label_dict):
         from properties import Properties
         obkey_length = 3 if Properties.getInstance().table_id else 2
@@ -198,7 +246,6 @@ class TrainingSet:
         #f = open(filename, 'w')
         try:
             from properties import Properties
-            import pandas as pd
             # getting feature values
             df = pd.DataFrame(self.values, columns=self.colnames)
 

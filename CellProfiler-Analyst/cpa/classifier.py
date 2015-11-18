@@ -437,9 +437,11 @@ class Classifier(wx.Frame):
         self.fileMenu = wx.Menu()
         self.loadTSMenuItem = self.fileMenu.Append(-1, text='Load training set\tCtrl+O',
                                                    help='Loads objects and classes specified in a training set file.')
+        self.loadFullTSMenuItem = self.fileMenu.Append(-1, text='Load CSV training set',
+                                                   help='Loads objects and classes specified in a training set file.')
         self.saveTSMenuItem = self.fileMenu.Append(-1, text='Save training set\tCtrl+S',
                                                    help='Save your training set to file so you can reload these classified cells again.')
-        self.saveFullTSMenuItem = self.fileMenu.Append(-1, text='Save training set as CSV\tCtrl+S',
+        self.saveFullTSMenuItem = self.fileMenu.Append(-1, text='Save training set as CSV',
                                                    help='Save your training data as CSV')
         self.fileMenu.AppendSeparator()
         # JEN - Start Add
@@ -516,6 +518,7 @@ class Classifier(wx.Frame):
 
         # Bind events to different menu items
         self.Bind(wx.EVT_MENU, self.OnLoadTrainingSet, self.loadTSMenuItem)
+        self.Bind(wx.EVT_MENU, self.OnLoadFullTrainingSet, self.loadFullTSMenuItem)
         self.Bind(wx.EVT_MENU, self.OnSaveTrainingSet, self.saveTSMenuItem)
         self.Bind(wx.EVT_MENU, self.OnSaveFullTrainingSet, self.saveFullTSMenuItem)
         self.Bind(wx.EVT_MENU, self.OnLoadModel, self.loadModelMenuItem) # JEN - Added
@@ -1052,6 +1055,18 @@ class Classifier(wx.Frame):
             filename = dlg.GetPath()
             self.LoadTrainingSet(filename)
 
+    def OnLoadFullTrainingSet(self, evt):
+        '''
+        Present user with file select dialog, then load selected training set.
+        '''
+        dlg = wx.FileDialog(self, "Select the file containing your classifier training set.",
+                            defaultDir=os.getcwd(),
+                            wildcard='Text files(*.csv)|*.csv|All files(*.*)|*.*',
+                            style=wx.OPEN | wx.FD_CHANGE_DIR)
+        if dlg.ShowModal() == wx.ID_OK:
+            filename = dlg.GetPath()
+            self.LoadTrainingSetCSV(filename)
+
     def LoadTrainingSet(self, filename):
         '''
         Loads the selected file, parses out object keys, and fetches the tiles.
@@ -1063,6 +1078,33 @@ class Classifier(wx.Frame):
             self.defaultTSFileName = os.path.basename(filename)
 
             self.trainingSet = TrainingSet(p, filename, labels_only=False)
+
+            self.RemoveAllSortClasses()
+            for label in self.trainingSet.labels:
+                self.AddSortClass(label)
+
+            keysPerBin = {}
+            for (label, key) in self.trainingSet.entries:
+                keysPerBin[label] = keysPerBin.get(label, []) + [key]
+
+            for bin in self.classBins:
+                if bin.label in keysPerBin.keys():
+                    bin.AddObjects(keysPerBin[bin.label], self.chMap, priority=2)
+
+            self.PostMessage('Training set loaded.')
+            self.GetNumberOfClasses() # Logs number of classes
+
+    def LoadTrainingSetCSV(self, filename):
+        '''
+        Loads the selected file, parses out object keys, and fetches the tiles for CSV
+        '''
+        # pause tile loading
+        with tilecollection.load_lock():
+            self.PostMessage('Loading training set from: %s' % filename)
+            # wx.FD_CHANGE_DIR doesn't seem to work in the FileDialog, so I do it explicitly
+            self.defaultTSFileName = os.path.basename(filename)
+
+            self.trainingSet = TrainingSet(p, filename, labels_only=False, csv=True)
 
             self.RemoveAllSortClasses()
             for label in self.trainingSet.labels:
