@@ -120,35 +120,34 @@ def FilterObjectsFromClassN(classNum, classifier, filterKeys, uncertain):
 
     cell_data = np.array([row[-number_of_features:] for row in data]) #last number_of_features columns in row
     object_keys = np.array([row[:-number_of_features] for row in data]) #all elements in row before last (number_of_features) elements
+    cell_data, object_keys = CleanData(cell_data, object_keys)
 
     res = [] # list
     if uncertain:
         # Our requirement: if the two largest scores are smaller than threshold
         probabilities = classifier.PredictProba(cell_data) #
         threshold = 0.1 # TODO: This threshold should be adjustable
-        sorted_p = np.sort(probabilities)[:,-2:] # sorted array
+        sorted_p = np.sort(probabilities)[:,-2:]# sorted array
         diff = sorted_p[:,1] - sorted_p[:,0]
 
         indices = np.where(diff < threshold)[0] # get all indices where this is true
         res = [object_keys[i] for i in indices] 
     else:
-        try:
-            predicted_classes = classifier.Predict(cell_data)
-        except:
-            #remove Null and None
-            remove_index = []
-            print len(cell_data)
-            for i in np.arange(len(cell_data)):
-                if "Null" in cell_data[i].tolist():
-                    remove_index.append(i)
-                elif None in cell_data[i].tolist():
-                    remove_index.append(i)
-            cell_data_truncated = np.delete(cell_data, remove_index, axis=0)
-            predicted_classes = classifier.Predict(cell_data_truncated)
-            object_keys = np.delete(object_keys, remove_index, axis=0)
-
+        predicted_classes = classifier.Predict(cell_data)
         res = object_keys[predicted_classes == classNum * np.ones(predicted_classes.shape)].tolist() #convert to list 
     return map(tuple,res) # ... and then to tuples
+
+def CleanData(self, dataValues, dataKeys):
+    #remove Null and None values
+    remove_index = []
+    for i in np.arange(len(dataValues)):
+        if "Null" in dataValues[i].tolist():
+            remove_index.append(i)
+        elif None in dataValues[i].tolist():
+            remove_index.append(i)
+    dataValues_truncated = np.delete(dataValues, remove_index, axis=0)
+    dataKeys_truncated = np.delete(dataKeys, remove_index, axis=0)
+    return dataValues_truncated, dataKeys_truncated
 
 def _objectify(p, field):
     return "%s.%s"%(p.object_table, field)
