@@ -248,6 +248,7 @@ def PerImageCounts(classifier, num_classes, filter_name=None, cb=None):
             cell_data = np.array([row[-number_of_features:] for row in data]) #last number_of_features columns in row
             image_keys = np.array([row[:-number_of_features] for row in data]) #all elements in row before last (number_of_features) elements
 
+            cell_data, image_keys = CleanData(cell_data, image_keys)
             predicted_classes = classifier.Predict(cell_data)
             for i in range(0, len(predicted_classes)):
                 row_cls = tuple(np.append(image_keys[i], predicted_classes[i]))
