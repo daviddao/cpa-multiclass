@@ -132,7 +132,20 @@ def FilterObjectsFromClassN(classNum, classifier, filterKeys, uncertain):
         indices = np.where(diff < threshold)[0] # get all indices where this is true
         res = [object_keys[i] for i in indices] 
     else:
-        predicted_classes = classifier.Predict(cell_data)
+        try:
+            predicted_classes = classifier.Predict(cell_data)
+        except:
+            #remove Null and None
+            remove_index = []
+            print len(cell_data)
+            for i in np.arange(len(cell_data)):
+                if "Null" in cell_data[i].tolist():
+                    remove_index.append(i)
+                elif None in cell_data[i].tolist():
+                    remove_index.append(i)
+            cell_data_truncated = np.delete(cell_data, remove_index, axis=0)
+            predicted_classes = classifier.Predict(cell_data_truncated)
+
         res = object_keys[predicted_classes == classNum * np.ones(predicted_classes.shape)].tolist() #convert to list 
     return map(tuple,res) # ... and then to tuples
 
