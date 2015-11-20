@@ -203,8 +203,13 @@ class ImageTile(ImagePanel):
         source = wx.DropSource(self)#, copy=cursor, move=cursor)
         source.SetData(data_object)
         result = source.DoDragDrop(wx.Drag_DefaultMove)
-        if result is wx.DragMove:
-            self.bin.RemoveSelectedTiles()
+        # def cb():
+        #     self.bin.RemoveKeys(self.bin.SelectedKeys()) # Hack to fix drag move
+        # wx.CallAfter(cb)
+        #if result is wx.DragMove:
+        self.bin.RemoveSelectedTiles()
+        self.bin.UpdateSizer()
+        self.bin.UpdateQuantity()
     
     def OnSize(self, evt):
         self.SetClientSize(evt.GetSize())
