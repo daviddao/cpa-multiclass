@@ -19,6 +19,7 @@ class TrainingSet:
     def __init__(self, properties, filename='', labels_only=False, csv=False):
         self.properties = properties
         self.colnames = db.GetColnamesForClassifier()
+        self.key_labels = object_key_columns()
         self.filename = filename
         self.cache = CellCache.getInstance()
         if filename != '':
@@ -50,8 +51,10 @@ class TrainingSet:
         self.entries = []               # list of (label, obKey) pairs
 
         # check cache freshness
-        self.cache.clear_if_objects_modified()
-            
+        try:
+            self.cache.clear_if_objects_modified()
+        except:
+            logging.info("Couldn't check for cache freshness. Connection to DB broken?") #let it pass to allow saving 
             
     def Create(self, labels, keyLists, labels_only=False, callback=None):
         '''
@@ -96,6 +99,7 @@ class TrainingSet:
 #        lines = lines.replace('\r', '\n')    # replace CRs with LFs
         lines = lines.split('\n')
         labelDict = collections.OrderedDict()
+        self.key_labels = object_key_columns()
         for l in lines:
             try:
                 if l.strip()=='': continue
@@ -129,11 +133,18 @@ class TrainingSet:
 
         df = pd.read_csv(filename)
         labels = list(set(df['Class'].values)) # List of labels
-        labelDict = collections.OrderedDict()
+        labelDict = collections.OrderedDict() # Why stuck?
+        self.key_labels = object_key_columns()
+        key_names = [key for key in self.key_labels]
         for label in labels:
-            keys = df[['ImageNumber','ObjectNumber']][df['Class'] == label].values # Get the keys
-            keys = map(lambda x: tuple((x[0],x[1])), keys) # convert them into tuples
-            labelDict[label] = keys
+            keys = df[key_names][df['Class'] == label].values # Get the keys
+            if len(key_names) == 2:
+                keys = map(lambda x: tuple((x[0],x[1])), keys) # convert them into tuples
+                labelDict[label] = keys
+            else:
+                assert(len(key_names) == 3)
+                keys = map(lambda x: tuple((x[0],x[1],x[2])), keys)
+                labelDict[label] = keys
 
 #         f = open(filename, 'U')
 #         lines = f.read()
@@ -219,7 +230,10 @@ class TrainingSet:
 
     def Save(self, filename):
         # check cache freshness
-        self.cache.clear_if_objects_modified()
+        try:
+            self.cache.clear_if_objects_modified()
+        except:
+            logging.info("Couldn't check cache freshness, DB connection lost?")
 
         f = open(filename, 'w')
         try:
@@ -241,7 +255,10 @@ class TrainingSet:
 
     def SaveAsCSV(self, filename):
         # check cache freshness
-        self.cache.clear_if_objects_modified()
+        try:
+            self.cache.clear_if_objects_modified()
+        except:
+            logging.info("Couldn't check cache freshness, DB connection lost?")
 
         #f = open(filename, 'w')
         try:
@@ -251,8 +268,18 @@ class TrainingSet:
 
             # getting object key
             tuples = self.get_object_keys()
-            keyList = map(lambda x : [x[0],x[1]], tuples)
-            df_keys = pd.DataFrame(keyList, columns=['ImageNumber','ObjectNumber'])
+            key_labels = self.key_labels
+            # Differentiate between ids
+            if len(key_labels) == 2:
+                keyList = map(lambda x : [x[0],x[1]], tuples)
+                df_keys = pd.DataFrame(keyList, columns=key_labels)
+                #df_keys = pd.DataFrame(keyList, columns=key_labels)
+            else:
+                #assert(len(tuples) == 3) # It has to be 3!
+                keyList = map(lambda x : [x[0],x[1],x[2]], tuples)
+                df_keys = pd.DataFrame(keyList, columns=key_labels)
+                #df_keys = pd.DataFrame(keyList, columns=key_labels)
+
 
             # getting label dataframe
             labels = self.labels

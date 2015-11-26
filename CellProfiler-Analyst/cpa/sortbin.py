@@ -237,6 +237,8 @@ class SortBin(wx.ScrolledWindow):
     def ReceiveDrop(self, srcID, obKeys):
         # TODO: stop drops from happening on the same board they originated on 
         
+        # Generate a closure to fix the issue, that images dragged into the own bin are deleted
+        # Add back the deleted images after deletion
         def hack(obKeys):
             def closure():
                 if self.classifier:
@@ -253,6 +255,7 @@ class SortBin(wx.ScrolledWindow):
         closure()
         [tile.Select() for tile in self.tiles if tile.obKey in obKeys]
         self.SetFocusIgnoringChildren() # prevent children from getting focus (want bin to catch key events)
+        self.classifier.UpdateTrainingSet() # Update TrainingSet after each drop
         return wx.DragMove
         
     def MapChannels(self, chMap):

@@ -207,7 +207,7 @@ class ImageTile(ImagePanel):
         #     self.bin.RemoveKeys(self.bin.SelectedKeys()) # Hack to fix drag move
         # wx.CallAfter(cb)
         #if result is wx.DragMove:
-        self.bin.RemoveSelectedTiles()
+        self.bin.RemoveSelectedTiles() # Removes images which stays during drag and drop
         self.bin.UpdateSizer()
         self.bin.UpdateQuantity()
     

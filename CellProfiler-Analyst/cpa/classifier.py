@@ -1154,14 +1154,14 @@ class Classifier(wx.Frame):
 
     def SaveTrainingSetAs(self, filename):
         classDict = {}
-        self.trainingSet = TrainingSet(p)
-        self.trainingSet.Create([bin.label for bin in self.classBins], [bin.GetObjectKeys() for bin in self.classBins])
+        #self.trainingSet = TrainingSet(p)
+        #self.trainingSet.Create([bin.label for bin in self.classBins], [bin.GetObjectKeys() for bin in self.classBins])
         self.trainingSet.Save(filename)
 
     def SaveTrainingSetAsCSV(self, filename):
         classDict = {}
-        self.trainingSet = TrainingSet(p)
-        self.trainingSet.Create([bin.label for bin in self.classBins], [bin.GetObjectKeys() for bin in self.classBins])
+        #self.trainingSet = TrainingSet(p)
+        #self.trainingSet.Create([bin.label for bin in self.classBins], [bin.GetObjectKeys() for bin in self.classBins])
         self.trainingSet.SaveAsCSV(filename)
 
     def OnAddSortClass(self, evt):
@@ -1258,10 +1258,13 @@ class Classifier(wx.Frame):
                 dlg = wx.ProgressDialog('Fetching cell data for training set...', '0% Complete', 100, self,
                                         wx.PD_ELAPSED_TIME | wx.PD_ESTIMATED_TIME | wx.PD_REMAINING_TIME | wx.PD_CAN_ABORT)
                 self.trainingSet = TrainingSet(p)
-                self.trainingSet.Create(labels=[bin.label for bin in self.classBins],
+                try:
+                    self.trainingSet.Create(labels=[bin.label for bin in self.classBins],
                                         keyLists=[bin.GetObjectKeys() for bin in self.classBins],
                                         callback=cb)
-                self.PostMessage('Training set updated.')
+                    self.PostMessage('Training set updated.')
+                except:
+                    self.PostMessage('Training set could not be updated. DB connection lost?')
                 dlg.Destroy()
                 return True
             except StopCalculating:
