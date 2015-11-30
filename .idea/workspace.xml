@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="847f14aa-a785-48e6-a220-e9322543250a" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/CellProfiler-Analyst/cpa/imagetools.py" afterPath="$PROJECT_DIR$/CellProfiler-Analyst/cpa/imagetools.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/CellProfiler-Analyst/cpa/classifier.py" afterPath="$PROJECT_DIR$/CellProfiler-Analyst/cpa/classifier.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
     </list>
     <ignored path="cpa-multiclass.iws" />
@@ -34,14 +34,12 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="classifier.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/CellProfiler-Analyst/cpa/classifier.py">
+      <file leaf-file-name="tableviewer.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/CellProfiler-Analyst/cpa/tableviewer.py">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="817" column="8" selection-start-line="817" selection-start-column="8" selection-end-line="817" selection-end-column="8" />
-              <folding>
-                <element signature="e#18#55#0" expanded="true" />
-              </folding>
+              <caret line="714" column="50" selection-start-line="714" selection-start-column="50" selection-end-line="714" selection-end-column="50" />
+              <folding />
             </state>
           </provider>
         </entry>
@@ -61,17 +59,17 @@
       <file leaf-file-name="multiclasssql.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/CellProfiler-Analyst/cpa/multiclasssql.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="-4.5555553">
+            <state vertical-scroll-proportion="0.0">
               <caret line="26" column="120" selection-start-line="26" selection-start-column="117" selection-end-line="26" selection-end-column="120" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="imagetools.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="imagetools.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/CellProfiler-Analyst/cpa/imagetools.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.37297297">
+            <state vertical-scroll-proportion="0.0">
               <caret line="344" column="16" selection-start-line="344" selection-start-column="16" selection-end-line="344" selection-end-column="16" />
               <folding />
             </state>
@@ -126,12 +124,14 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="guiutils.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/CellProfiler-Analyst/cpa/guiutils.py">
+      <file leaf-file-name="classifier.py" pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/CellProfiler-Analyst/cpa/classifier.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0">
-              <caret line="790" column="4" selection-start-line="790" selection-start-column="4" selection-end-line="790" selection-end-column="4" />
-              <folding />
+            <state vertical-scroll-proportion="0.5370844">
+              <caret line="1395" column="18" selection-start-line="1395" selection-start-column="18" selection-end-line="1395" selection-end-column="18" />
+              <folding>
+                <element signature="e#18#55#0" expanded="true" />
+              </folding>
             </state>
           </provider>
         </entry>
@@ -146,11 +146,11 @@
       <list>
         <option value="$PROJECT_DIR$/CellProfiler-Analyst/Properties_README.txt" />
         <option value="$PROJECT_DIR$/CellProfiler-Analyst/cpa/dbconnect.py" />
-        <option value="$PROJECT_DIR$/CellProfiler-Analyst/cpa/classifier.py" />
         <option value="$PROJECT_DIR$/CellProfiler-Analyst/cpa/fft.py" />
         <option value="$PROJECT_DIR$/CellProfiler-Analyst/cpa/properties.py" />
         <option value="$PROJECT_DIR$/CellProfiler-Analyst/cpa/multiclasssql.py" />
         <option value="$PROJECT_DIR$/CellProfiler-Analyst/cpa/imagetools.py" />
+        <option value="$PROJECT_DIR$/CellProfiler-Analyst/cpa/classifier.py" />
       </list>
     </option>
   </component>
@@ -158,10 +158,10 @@
     <order />
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="307" />
-    <option name="y" value="192" />
-    <option name="width" value="960" />
-    <option name="height" value="517" />
+    <option name="x" value="531" />
+    <option name="y" value="347" />
+    <option name="width" value="1342" />
+    <option name="height" value="715" />
   </component>
   <component name="ProjectLevelVcsManager" settingsEditedManually="false">
     <OptionsSetting value="true" id="Add" />
@@ -386,27 +386,27 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="307" y="192" width="960" height="517" extended-state="0" />
+    <frame x="531" y="347" width="1342" height="715" extended-state="0" />
     <editor active="true" />
     <layout>
-      <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.3296" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
-      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4117647" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.37699682" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
+      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.26797882" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Application Servers" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.24920128" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
-      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.24920128" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.3296" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
+      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4117647" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
+      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="SLIDING" type="SLIDING" visible="false" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
-      <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
       <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
+      <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
     </layout>
   </component>
   <component name="Vcs.Log.UiProperties">
@@ -425,6 +425,70 @@
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
+    <entry file="file://$PROJECT_DIR$/CellProfiler-Analyst/cpa/multiclasssql.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="26" column="120" selection-start-line="26" selection-start-column="117" selection-end-line="26" selection-end-column="120" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/CellProfiler-Analyst/cpa/imagetools.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/CellProfiler-Analyst/cpa/dbconnect.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="615" column="12" selection-start-line="615" selection-start-column="12" selection-end-line="615" selection-end-column="12" />
+          <folding>
+            <element signature="e#0#14#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/CellProfiler-Analyst/cpa/tilecollection.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="47" column="73" selection-start-line="47" selection-start-column="73" selection-end-line="47" selection-end-column="73" />
+          <folding>
+            <element signature="e#0#37#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/CellProfiler-Analyst/cpa/datamodel.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="60" column="20" selection-start-line="60" selection-start-column="12" selection-end-line="60" selection-end-column="20" />
+          <folding>
+            <element signature="e#0#14#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/CellProfiler-Analyst/cpa/trainingset.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="325" column="20" selection-start-line="325" selection-start-column="20" selection-end-line="325" selection-end-column="20" />
+          <folding>
+            <element signature="e#0#22#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/CellProfiler-Analyst/cpa/guiutils.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="790" column="4" selection-start-line="790" selection-start-column="4" selection-end-line="790" selection-end-column="4" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/CellProfiler-Analyst/cpa/properties.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
@@ -719,16 +783,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/CellProfiler-Analyst/cpa/trainingset.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="325" column="20" selection-start-line="325" selection-start-column="20" selection-end-line="325" selection-end-column="20" />
-          <folding>
-            <element signature="e#0#22#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/CellProfiler-Analyst/cpa/datamodel.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
@@ -771,16 +825,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/CellProfiler-Analyst/cpa/classifier.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="817" column="8" selection-start-line="817" selection-start-column="8" selection-end-line="817" selection-end-column="8" />
-          <folding>
-            <element signature="e#18#55#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/CellProfiler-Analyst/cpa/generalclassifier.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
@@ -793,7 +837,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/CellProfiler-Analyst/cpa/multiclasssql.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="-4.5555553">
+        <state vertical-scroll-proportion="0.0">
           <caret line="26" column="120" selection-start-line="26" selection-start-column="117" selection-end-line="26" selection-end-column="120" />
           <folding />
         </state>
@@ -801,9 +845,37 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/CellProfiler-Analyst/cpa/imagetools.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.37297297">
+        <state vertical-scroll-proportion="0.0">
           <caret line="344" column="16" selection-start-line="344" selection-start-column="16" selection-end-line="344" selection-end-column="16" />
           <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/CellProfiler-Analyst/cpa/trainingset.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="325" column="20" selection-start-line="325" selection-start-column="20" selection-end-line="325" selection-end-column="20" />
+          <folding>
+            <element signature="e#0#22#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/CellProfiler-Analyst/cpa/tableviewer.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="714" column="50" selection-start-line="714" selection-start-column="50" selection-end-line="714" selection-end-column="50" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/CellProfiler-Analyst/cpa/classifier.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.5370844">
+          <caret line="1395" column="18" selection-start-line="1395" selection-start-column="18" selection-end-line="1395" selection-end-column="18" />
+          <folding>
+            <element signature="e#18#55#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>

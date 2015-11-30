@@ -1396,6 +1396,30 @@ class Classifier(wx.Frame):
                                         contrast=self.contrast)
         imViewer.SetClasses(classCoords)
 
+        # Show table of counts
+        nClasses = len(self.classBins)
+        title = "Hit table (Image key %s)" % (imKey)
+        title += ' (%s)' % (os.path.split(p._filename)[1])
+        grid = tableviewer.TableViewer(self, title=title)
+        labels = list(dbconnect.image_key_columns())
+        # record the column indices for the keys
+        # CONSTRUCT ARRAY OF TABLE DATA
+        classCounts = []
+        tableData = []
+        for className, obKeys in classHits.items():
+            classCounts.append(len(classCoords[className]))
+        tableData += imKey
+        tableData += [sum(classCounts)]
+        tableData += classCounts
+        key_col_indices = [i for i in range(len(labels))]
+
+        labels += ['Total %s Count' % (p.object_name[0].capitalize())]
+        for i in xrange(nClasses):
+            labels += ['%s %s Count' % (self.classBins[i].label.capitalize(), p.object_name[0].capitalize())]
+        tableData = np.array([tableData])
+        grid.table_from_array(tableData, labels, 'Image', key_col_indices)
+        grid.Show()
+
     def ScoreImage(self, imKey):
         '''
         Scores an image, then returns a dictionary of object keys indexed by class name
@@ -1442,7 +1466,7 @@ class Classifier(wx.Frame):
 
         # FETCH PER-IMAGE COUNTS FROM DB
         if not self.keysAndCounts or filter != self.lastScoringFilter:
-            # If hit counts havn't been calculated since last training or if the
+            # If hit counts haven't been calculated since last training or if the
             # user is filtering the data differently then classify all objects
             # into phenotype classes and count phenotype-hits per-image.
             self.lastScoringFilter = filter
