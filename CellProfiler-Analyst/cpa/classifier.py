@@ -439,10 +439,10 @@ class Classifier(wx.Frame):
         self.fileMenu = wx.Menu()
         self.loadTSMenuItem = self.fileMenu.Append(-1, text='Load training set\tCtrl+O',
                                                    help='Loads objects and classes specified in a training set file.')
-        self.loadFullTSMenuItem = self.fileMenu.Append(-1, text='Load CSV training set',
-                                                   help='Loads objects and classes specified in a training set file.')
         self.saveTSMenuItem = self.fileMenu.Append(-1, text='Save training set\tCtrl+S',
                                                    help='Save your training set to file so you can reload these classified cells again.')
+        self.loadFullTSMenuItem = self.fileMenu.Append(-1, text='Load CSV training set',
+                                                   help='Loads objects and classes specified in a training set file.')
         self.saveFullTSMenuItem = self.fileMenu.Append(-1, text='Save training set as CSV',
                                                    help='Save your training data as CSV')
         self.fileMenu.AppendSeparator()

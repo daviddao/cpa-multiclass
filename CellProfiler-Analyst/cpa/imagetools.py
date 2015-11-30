@@ -49,7 +49,7 @@ def FetchImage(imKey):
     else:
         ir = ImageReader()
         filenames = db.GetFullChannelPathsForImage(imKey)
-        imgs = ir.ReadImages(filenames)                    
+        imgs = ir.ReadImages(filenames)                       
         cache[imKey] = imgs
         cachedkeys += [imKey]
         while len(cachedkeys) > int(p.image_buffer_size):

@@ -246,10 +246,12 @@ class TrainingSet:
             i = 0
             for label, obKey in self.entries:
                 line = '%s %s %s\n'%(label, ' '.join([str(int(k)) for k in obKey]), ' '.join([str(int(k)) for k in self.coordinates[i]]))
-                #line = '%s %s\n'%(label, ' '.join([str(int(k)) for k in obKey]))
                 f.write(line)
                 i += 1 # increase counter to keep track of the coordinates positions
-            #f.write('# ' + self.cache.save_to_string([k[1] for k in self.entries]) + '\n')
+            try:
+                f.write('# ' + self.cache.save_to_string([k[1] for k in self.entries]) + '\n')
+            except:
+                logging.error("No DB connection, couldn't save cached image strings")
         except:
             logging.error("Error saving training set %s" % (filename))
             f.close()

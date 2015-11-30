@@ -97,6 +97,7 @@ class ImageReader(object):
         channels = []
         for i, filename_or_url in enumerate(filenames_or_urls):
             image = self._read_image_via_bioformats(filename_or_url)
+
             channels += self._extract_channels(filename_or_url, image,
                                                p.image_names[i],
                                                int(p.channels_per_image[i]))
