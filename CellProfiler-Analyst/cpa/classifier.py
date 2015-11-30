@@ -332,6 +332,8 @@ class Classifier(wx.Frame):
             if response == wx.ID_YES:
                 self.LoadTrainingSet(p.training_set)
 
+        self.AutoSave() # Autosave try out
+
 
  
 
@@ -1154,14 +1156,24 @@ class Classifier(wx.Frame):
 
     def SaveTrainingSetAs(self, filename):
         classDict = {}
-        #self.trainingSet = TrainingSet(p)
-        #self.trainingSet.Create([bin.label for bin in self.classBins], [bin.GetObjectKeys() for bin in self.classBins])
+        trainingSet = self.trainingSet # Create Save Copy
+        try:
+            self.trainingSet = TrainingSet(p)
+            self.trainingSet.Create([bin.label for bin in self.classBins], [bin.GetObjectKeys() for bin in self.classBins])
+        except:
+            logging.info("Couldn't update TrainingSet. Using last AutoSave.")
+            self.trainingSet = trainingSet # Use backup
         self.trainingSet.Save(filename)
 
     def SaveTrainingSetAsCSV(self, filename):
         classDict = {}
-        #self.trainingSet = TrainingSet(p)
-        #self.trainingSet.Create([bin.label for bin in self.classBins], [bin.GetObjectKeys() for bin in self.classBins])
+        trainingSet = self.trainingSet # Create Save Copy
+        try:
+            self.trainingSet = TrainingSet(p)
+            self.trainingSet.Create([bin.label for bin in self.classBins], [bin.GetObjectKeys() for bin in self.classBins])
+        except:
+            logging.info("Couldn't update TrainingSet. Using last AutoSave.")
+            self.trainingSet = trainingSet # Use backup
         self.trainingSet.SaveAsCSV(filename)
 
     def OnAddSortClass(self, evt):
@@ -1244,6 +1256,14 @@ class Classifier(wx.Frame):
     # Added by DD
     def OnTrainAll(self, evt):
         pass
+
+    from utils import delay
+    # Add AutoSave by DD
+    @delay(300.0) # every 5 min
+    def AutoSave(self):
+        logging.info("Autosaved!")
+        self.UpdateTrainingSet()
+        self.AutoSave()
 
     def UpdateTrainingSet(self):
         # pause tile loading

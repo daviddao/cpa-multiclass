@@ -255,7 +255,7 @@ class SortBin(wx.ScrolledWindow):
         closure()
         [tile.Select() for tile in self.tiles if tile.obKey in obKeys]
         self.SetFocusIgnoringChildren() # prevent children from getting focus (want bin to catch key events)
-        self.classifier.UpdateTrainingSet() # Update TrainingSet after each drop
+        #self.classifier.UpdateTrainingSet() # Update TrainingSet after each drop (very slow)
         return wx.DragMove
         
     def MapChannels(self, chMap):

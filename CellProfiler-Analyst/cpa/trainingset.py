@@ -49,6 +49,7 @@ class TrainingSet:
                                         #     eg: [1,1,2,3,1,2] 
         self.values = []                # array of measurements (data from db) for each sample
         self.entries = []               # list of (label, obKey) pairs
+        self.coordinates = []           # list of coordinates per obKey
 
         # check cache freshness
         try:
@@ -74,6 +75,7 @@ class TrainingSet:
         # Populate the label_matrix, entries, and values
         for label, cl_label, keyList in zip(labels, self.classifier_labels, keyLists):
             self.label_matrix += ([cl_label] * len(keyList))
+
             self.entries += zip([label] * len(keyList), keyList)
 
             if labels_only:
@@ -86,6 +88,7 @@ class TrainingSet:
                     num_fetched[0] = num_fetched[0] + 1
                     return d
                 self.values += [get_data(k) for k in keyList]
+                self.coordinates += [db.GetObjectCoords(k) for k in keyList]
 
         self.label_matrix = numpy.array(self.label_matrix)
         self.values = numpy.array(self.values, np.float64)
@@ -130,7 +133,6 @@ class TrainingSet:
         
     def LoadCSV(self, filename, labels_only=True):
         self.Clear()
-
         df = pd.read_csv(filename)
         labels = list(set(df['Class'].values)) # List of labels
         labelDict = collections.OrderedDict() # Why stuck?
@@ -241,10 +243,13 @@ class TrainingSet:
             p = Properties.getInstance()
             f.write('# Training set created while using properties: %s\n'%(p._filename))
             f.write('label '+' '.join(self.labels)+'\n')
+            i = 0
             for label, obKey in self.entries:
-                line = '%s %s %s\n'%(label, ' '.join([str(int(k)) for k in obKey]), ' '.join([str(int(k)) for k in db.GetObjectCoords(obKey)]))
+                line = '%s %s %s\n'%(label, ' '.join([str(int(k)) for k in obKey]), ' '.join([str(int(k)) for k in self.coordinates[i]]))
+                #line = '%s %s\n'%(label, ' '.join([str(int(k)) for k in obKey]))
                 f.write(line)
-            f.write('# ' + self.cache.save_to_string([k[1] for k in self.entries]) + '\n')
+                i += 1 # increase counter to keep track of the coordinates positions
+            #f.write('# ' + self.cache.save_to_string([k[1] for k in self.entries]) + '\n')
         except:
             logging.error("Error saving training set %s" % (filename))
             f.close()
@@ -304,7 +309,7 @@ class TrainingSet:
             raise
         #f.close()
         logging.info('Training set saved to %s as CSV'%filename)
-        #self.saved = True
+        self.saved = True
             
 
     def get_object_keys(self):

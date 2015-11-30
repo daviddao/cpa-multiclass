@@ -1,0 +1,4 @@
+# Training set created while using properties: ../../data/23_classes/no_img.properties
+label positive negative
+positive 1 242 204
+negative 9 484 21
