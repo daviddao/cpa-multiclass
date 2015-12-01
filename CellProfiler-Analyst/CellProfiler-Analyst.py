@@ -112,8 +112,8 @@ class MainGUI(wx.Frame):
     '''Main GUI frame for CellProfiler Analyst
     '''
     def __init__(self, properties, parent, id=-1, **kwargs):
-        wx.Frame.__init__(self, parent, id=id, title='CellProfiler Analyst 2.1.0 (r%s)'%(__version__), **kwargs)
-
+        #wx.Frame.__init__(self, parent, id=id, title='CellProfiler Analyst 2.1.0 (r%s)'%(__version__), **kwargs)
+        wx.Frame.__init__(self, parent, id=id, title='CellProfiler Analyst 2.1.0', **kwargs)
         self.properties = properties
         self.SetIcon(get_cpa_icon())
         if not sys.platform.startswith('win'):
@@ -377,7 +377,7 @@ def new_version_cb(new_version, new_version_info):
         try: wx.GetApp().splash.Destroy()
         except: pass
 
-        import cellprofiler.gui.newversiondialog as nvd
+        import cpa.gui.newversiondialog as nvd
         dlg = nvd.NewVersionDialog(None, "CellProfiler Analyst update available (version %d)"%(new_version),
                                    new_version_info, 'http://cellprofiler.org/downloadCPA.htm',
                                    cpa.cpaprefs.get_check_new_versions(), set_check_pref, skip_this_version)
@@ -431,18 +431,23 @@ class CPAnalyst(wx.App):
         # The JVM has to be started after db.connect(), otherwise bus errors
         # occur on Mac OS X.
         javabridge.start_vm(class_path=bioformats.JARS, run_headless=True)
+
+        # removes the log4j warnings
+        from bioformats import log4j
+        log4j.basic_config()
+
         javabridge.attach()
         javabridge.activate_awt()
 
         try:
             if __version__ != -1:
-                import cellprofiler.utilities.check_for_updates as cfu
+                import cpa.util.check_for_updates as cfu
                 cfu.check_for_updates('http://cellprofiler.org/CPAupdate.html',
                                       max(__version__, cpa.cpaprefs.get_skip_version()),
                                       new_version_cb,
                                       user_agent='CPAnalyst/2.0.%s'%(__version__))
         except ImportError:
-            logging.warn("CPA was unable to check for updates. Could not import cellprofiler.utilities.check_for_updates.")
+            logging.warn("CPA was unable to check for updates. Could not import cpa.util.check_for_updates.")
 
         return True
 

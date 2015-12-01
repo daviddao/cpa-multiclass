@@ -261,10 +261,6 @@ class Classifier(wx.Frame):
         KNeighborsClassifier = GeneralClassifier("neighbors.KNeighborsClassifier()", self)
         FastGentleBoostingClassifier = FastGentleBoosting(self)
 
-        # BETA
-        #import autosklearn # Bayesian Optimisation
-        #AutoSklearnClassifier = GeneralClassifier("autosklearn.AutoSklearnClassifier()", self)
-
         # JK - Start Add
         # Define the Random Forest classification algorithm to be default and set the default
         self.algorithm = RandomForestClassifier
@@ -279,7 +275,6 @@ class Classifier(wx.Frame):
             'LDA': LDA,
             'KNeighborsClassifier': KNeighborsClassifier,
             'FastGentleBoosting' : FastGentleBoostingClassifier
-            #,'AutoSklearnClassifier': AutoSklearnClassifier
         }
 
         #####################
