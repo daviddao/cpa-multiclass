@@ -1,11 +1,6 @@
-# cellprofiler-awesome
+# CPA Multiclass
 
-Multiclass SQL Py - Extracts Data Base 
-
-Abbas et Al BMC Bioinformatics 2014
-A comparative study
-
-PNAS Thous Ray Jones 2009
+moved to 2.1.0-dev branch of https://github.com/CellProfiler/CellProfiler-Analyst
 
 
 
